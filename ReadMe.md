@@ -32,8 +32,8 @@ Create a place where NaaN files will reside on your computer disk. The recommend
 
 ```
 NaanWorld/
-	naan/				# NaaN library for projects
-	mobileapp/		# this project
+	naan/               # NaaN library for projects
+	mobileapp/          # this project
 ```
 The `naan` folder is the version of Naanlib used for building projects. This structure makes it possible to retain a consistent version of `naan` even if you update the tools.
 
@@ -86,31 +86,31 @@ The following steps describe how to open a new project in NaaN. The project and 
 
 **[1]** Invoke `naanide` to open as a browser page. It starts on the **Home** page at the **Welcome** tab. You will see a separate terminal window for the server that supports the web page.
 
-![NaanIDE Welcome tab](https://naanlang.s3.amazonaws.com/naanlang/blog/posts/naanide-mobileapp-screenshots/v0-9-x/NaanIDE-01+-+Welcome.png)
+![NaanIDE Welcome tab](https://naanlang.org/naanlang/blog/posts/naanide-mobileapp-screenshots/v0-9-x/NaanIDE-01+-+Welcome.png)
 
 **[2]** Select the blue **Projects** tab. You will see an empty projects list.
-![NaanIDE Projects tab](https://naanlang.s3.amazonaws.com/naanlang/blog/posts/naanide-mobileapp-screenshots/v0-9-x/NaanIDE-03+-+Empty+Projects.png)
+![NaanIDE Projects tab](https://naanlang.org/naanlang/blog/posts/naanide-mobileapp-screenshots/v0-9-x/NaanIDE-03+-+Empty+Projects.png)
 
 **[3]** Click the **[+]** button at the bottom of the page to add a project. It will show you folders on your computer. Navigate to the _**mobileapp**_ folder you just created with git. Click **Select**.
-![NaanIDE folder selector](https://naanlang.s3.amazonaws.com/naanlang/blog/posts/naanide-mobileapp-screenshots/v0-9-x/NaanIDE-04+-+Open+Project+Folder.png)
+![NaanIDE folder selector](https://naanlang.org/naanlang/blog/posts/naanide-mobileapp-screenshots/v0-9-x/NaanIDE-04+-+Open+Project+Folder.png)
 
 **[4]** NaanIDE will open the project and switch to the **Project** page, showing the contents of the _**mobileapp**_ project.
-![NaanIDE mobileapp project](https://naanlang.s3.amazonaws.com/naanlang/blog/posts/naanide-mobileapp-screenshots/v0-9-x/NaanIDE-05+-+Project+After+Open.png)
+![NaanIDE mobileapp project](https://naanlang.org/naanlang/blog/posts/naanide-mobileapp-screenshots/v0-9-x/NaanIDE-05+-+Project+After+Open.png)
 
 ### Building the app
 
 To build the app click the ▶️ *build and run* button in the menu bar at the top of the NaanIDE page. To the left of this is the stage selector, which defaults to `dev`. 
-![Build and Run button](https://naanlang.s3.amazonaws.com/naanlang/blog/posts/naanide-mobileapp-screenshots/v0-9-x/NaanIDE-09+-+Build+and+Run.png)
+![Build and Run button](https://naanlang.org/naanlang/blog/posts/naanide-mobileapp-screenshots/v0-9-x/NaanIDE-09+-+Build+and+Run.png)
 
 After a brief delay NaanIDE will open the executing mobileapp in a new window that simulates a physical phone. You can resize this window to experiment with the variation of layouts across different devices.
-![App in Simulator](https://naanlang.s3.amazonaws.com/naanlang/blog/posts/naanide-mobileapp-screenshots/v0-9-x/NaanIDE-10+-+App+in+Simulator.png)
+![App in Simulator](https://naanlang.org/naanlang/blog/posts/naanide-mobileapp-screenshots/v0-9-x/NaanIDE-10+-+App+in+Simulator.png)
 
 MobileApp implements a virtual chessboard, where you navigate from one square to the next by swiping in the desired direction by mouse or by touch. You can also use the arrow keys instead of swiping.
 
 ### Debugging
 
 To use the debugger, select the **Run** page in the NaanIDE menu bar. Find the line in the navigator on the left showing *NaaN MobileApp 0.9.0-dev+1* and click it to show the REPL and open the GUI debugger.
-![GUI Debugger](https://naanlang.s3.amazonaws.com/naanlang/blog/posts/naanide-mobileapp-screenshots/v0-9-x/NaanIDE-11+-+Run+tab+with+Debugger+and+Console.png)
+![GUI Debugger](https://naanlang.org/naanlang/blog/posts/naanide-mobileapp-screenshots/v0-9-x/NaanIDE-11+-+Run+tab+with+Debugger+and+Console.png)
 These are connected to the webapp running in the simulator window, and the REPL shows the webapp's debugging messages such as the following:
 
 ```
@@ -130,7 +130,7 @@ NaanIDE supports multiple *stages* which are entirely separate builds of the pro
 1. `dev` offers slow execution but easy debugging
 2. `prod` offers fast execution but without the GUI debugger
 3. `server` provides a simple server for testing on physical devices
-![](https://naanlang.s3.amazonaws.com/naanlang/blog/posts/naanide-mobileapp-screenshots/v0-9-x/NaanIDE-08+-+Build+Stages.png)
+![](https://naanlang.org/naanlang/blog/posts/naanide-mobileapp-screenshots/v0-9-x/NaanIDE-08+-+Build+Stages.png)
 
 ### Testing on an actual device
 
