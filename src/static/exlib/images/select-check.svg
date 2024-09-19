@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<svg xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns="http://www.w3.org/2000/svg" version="1.1" xmlns:xl="http://www.w3.org/1999/xlink" viewBox="84.46154 94.54945 344 344" width="344" height="344">
+  <defs/>
+  <g id="drawn" fill="none" stroke="none" fill-opacity="1" stroke-dasharray="none" stroke-opacity="1">
+    <title>drawn</title>
+    <g id="drawn_Master_layer">
+      <title>Master layer</title>
+      <g id="Group_5">
+        <g id="Graphic_4">
+          <circle cx="256.46154" cy="266.54945" r="172.000274839126" fill="white"/>
+        </g>
+        <g id="Graphic_3">
+          <circle cx="256.46154" cy="266.54945" r="150.000239685284" fill="#0079fe"/>
+        </g>
+        <g id="Graphic_2">
+          <path d="M 190.6 265.6 L 235.6 322 L 318.4 190 L 336.4 201.4 L 242.2 351.4 L 232.4 351.4 L 174 279.2 Z" fill="white"/>
+        </g>
+      </g>
+    </g>
+  </g>
+</svg>

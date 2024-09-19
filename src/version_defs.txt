@@ -1,0 +1,8 @@
+#
+# version_defs.txt
+#
+
+$MobileVersion$
+$Version$
+$MobileCacheBuster$
+$CacheBuster$

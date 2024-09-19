@@ -1,0 +1,35 @@
+{
+    "background_color": "#$DeployBgColor$",
+    "theme_color": "#$DeployColor$",
+    "description": "MobileApp",
+    "display": "fullscreen",
+    "icons": [
+        {
+            "src": "exlib/images/MobileApp Logo 256x256.svg",
+            "sizes": "256x256",
+            "type": "image/svg+xml",
+            "purpose": "maskable"
+        },
+        {
+            "src": "exlib/images/MobileApp Logo 512x512.svg",
+            "sizes": "512x512",
+            "type": "image/svg+xml",
+            "purpose": "maskable"
+        },
+        {
+            "src": "exlib/images/MobileApp Logo 512x512 any.svg",
+            "sizes": "512x512",
+            "type": "image/svg+xml",
+            "purpose": "any"
+        },
+        {
+            "src": "exlib/images/mobile-app-pwa-splash-screen.png",
+            "sizes": "1024x1024",
+            "type": "image/png",
+            "purpose": "maskable"
+        }
+    ],
+    "name": "MobileApp",
+    "short_name": "MobileApp",
+    "start_url": "$DeployURL$"
+}

@@ -1,0 +1,472 @@
+/*
+ * swipe.nlg
+ * MobileApp PWA
+ *
+ * column positioning:                          //                          //                      !
+ *
+ * Copyright (c) 2021-2024 by Richard C. Zulch
+ *
+ */
+
+
+/*
+ * Swiper
+ *
+ *     Provide a swiping UI for click/touch events occuring on the touchDiv, where baseDiv is the
+ * original div being swiped. The axis first taken by the user is the swiping direction, and does not
+ * change until that particular swiping operation is complete.
+ *     The touchDiv provided should have exactly 3 div children that are 100% the width and height of
+ * their parent. The first div should be the "base", which is actually used for display at all times.
+ * The other two divs are used for swiping and will be hidden with class d-none most of the time.
+ *     The callback is called with callback(operation, argument) with the following arguments:
+ *
+ *  "acting"    The user has started acting with touch or mouse according to the passed event.
+ *  "start"     The argument is the axis, which is either `xaxis or `yaxis The callback must return a
+ *              tuple of divs `(topLeft, botRight) representing the new divs on either side of the
+ *              baseDiv. If either element in the tuple is false then the user cannot swipe to that.
+ *  "acted"     The user has finished acting, and has now acted, passing the event and a flag for
+ *              having moved or not.
+ *  "early"     The first argument is the axis, and the second is the direction that is 0 for the
+ *              topLeft or 1 for the botRight depending on which direction the user chose. This is
+ *              called when a swipe has been committed but before any animation has taken place.
+ *  "end"       End indicates a swipe has occurred and animation has completed, with the same args
+ *              as early previously. If the swipe is invalid or cancelled then "end" is not called.
+ *  false       This is the cleanup callback, which is always called when the operation completes.
+ *  "click"     Click is sent with an event argument in the case that the touchDiv receives a tap
+ *              or mouse click that does not move enough to be a swipe. The caller would have to
+ *              decide what to do with this.
+ *
+ *     This works by attaching event listeners to the touchDiv and then executing the callback when
+ * the swiping starts and ends. This handles combined click and touch events. If a new swiping oper-
+ * ation starts before the previous one is complete then this terminates the first one and begins the
+ * new one.
+ *     For cleanest redrawing, this keeps the swipe-div of a successful swipe as the base and makes
+ * the old base into a new swipe div. There are always 3 divs because one is the display and the
+ * other two are hidden when not swiping.
+ *     There are two nonces to control the async operation here. The pending nonce is used between
+ * the incoming events and the toucher function that tracks and animates. The running nonce is used
+ * to serial swiping operations. If the user releases and begins again before the animation is done
+ * then this uses pending.stop to signal that the previous toucher instance should terminate, and
+ * then uses running to wait until it has actually finished.
+ *
+ * Options are:
+ *  baseSwipingClass    - the name of a CSS class to automatically apply to baseDiv during swiping.
+ *  minMove             - the minimum movement in pixels to avoid rejecting the swipe.
+ *
+ */
+
+closure Swiper(touchDiv, options, callback,
+    local swiper, baserect, minMove, topleft, botright, pageXY, extent, axis, dragging, pending, running) {
+    global(js, window)
+    swiper = new(object, this)
+    if touchDiv.children.length != 3
+        debuglog("Swiper: touchDiv needs exactly 3 div children")
+    swiper.baseDiv = touchDiv.children.0
+    swiper.swipeDiv1 = touchDiv.children.1
+    swiper.swipeDiv2 = touchDiv.children.2
+    if options.minMove
+        minMove = options.minMove
+    else
+        minMove = 50
+
+    //
+    // setaxis
+    //
+    
+    function setaxis(newaxis) {
+        baserect = touchDiv.getBoundingClientRect()
+        baserect = xnew(window.DOMRect, 0, 0, baserect.width, baserect.height)    // move to origin
+        axis = newaxis
+        if axis == `xaxis {                                                 // horizontal
+            topleft = `left
+            botright = `right
+            pageXY = `pageX
+        } else {                                                            // `yaxis vertical
+            topleft = `top
+            botright = `bottom
+            pageXY = `pageY
+        }
+        extent = baserect[botright] - baserect[topleft]
+    }
+
+    //
+    // setpos
+    //
+    
+    function setpos(swipos) {
+        swiper.swipeDiv1.style[topleft] = strcat(swipos-extent, "px")
+        swiper.baseDiv.style[topleft] = strcat(swipos, "px")
+        swiper.swipeDiv2.style[topleft] = strcat(swipos+extent, "px")
+    }
+
+    //
+    // resetpos
+    //
+    
+    function resetpos() {
+        swiper.baseDiv.style.left = strcat(baserect.left, "px")
+        swiper.swipeDiv1.style.top = swiper.swipeDiv2.style.top = swiper.baseDiv.style.top = strcat(baserect.top, "px")
+        swiper.swipeDiv1.style.left = swiper.swipeDiv2.style.left = strcat(baserect.left, "px")
+    }
+    
+    // swapDivs
+    //
+    // After swiping, swap the baseDiv with the swipeDiv in the specified direction because the
+    // swipe is committed and we want to keep the same div to prevent redraw problems.
+    
+    function swapDivs(direction, local newbase, div, baseClasses, swipeClasses, baseID, newID) {
+        if direction == 0 {
+            newbase = swiper.swipeDiv1
+            swiper.swipeDiv1 = swiper.baseDiv
+        }
+        else {
+            newbase = swiper.swipeDiv2
+            swiper.swipeDiv2 = swiper.baseDiv
+        }
+        for div in Array.from(swiper.baseDiv.children)
+            setElementClass(div, "d-none", true)
+        baseClasses = Array.from(swiper.baseDiv.classList)
+        swipeClasses = Array.from(newbase.classList)
+        xapply(swiper.baseDiv.classList, `remove, baseClasses)
+        xapply(newbase.classList, `remove, swipeClasses)
+        xapply(swiper.baseDiv.classList, `add, swipeClasses)
+        xapply(newbase.classList, `add, baseClasses)
+        baseID = swiper.baseDiv.id
+        newID = newbase.id
+        newbase.id = ""
+        swiper.baseDiv.id = newID
+        newbase.id = baseID
+        swiper.baseDiv = newbase
+        resetpos()
+    }
+
+    //
+    // toucher
+    //
+    
+    closure toucher(pending, local lastrun, nextrun, frameDiv1, frameDiv2) {
+        //
+        // align
+        //
+        function align() {
+            if axis == `xaxis                                               // horizontal
+                swiper.swipeDiv1.style.top = swiper.swipeDiv2.style.top = swiper.baseDiv.style.top
+            else                                                            // `yaxis vertical
+                swiper.swipeDiv1.style.left = swiper.swipeDiv2.style.left = swiper.baseDiv.style.left
+        }
+
+        lastrun = running
+        nextrun = running = new(nonce)                                      // new nonce for second (nth) in line
+        lastrun.wait()                                                      // wait for any existing operation
+        if options.baseSwipingClass
+            setElementClass(swiper.baseDiv, options.baseSwipingClass, true)
+        `(frameDiv1, frameDiv2) = callback("start", axis)
+        align()
+        setpos(baserect[topleft])
+        if frameDiv1 {
+            setElementClass(frameDiv1, "d-none", false)
+            swiper.swipeDiv1.appendChild(frameDiv1)
+            setElementClass(swiper.swipeDiv1, "d-none", false)
+        }
+        if frameDiv2 {
+            setElementClass(frameDiv2, "d-none", false)
+            swiper.swipeDiv2.appendChild(frameDiv2)
+            setElementClass(swiper.swipeDiv2, "d-none", false)
+        }
+        callback("visible", axis)                                           // swipe frames are now visible
+        future(function(local step, swipos, touch, final, xyoff, delta, factor, diff, locaxis) {
+            //
+            // Phase 1 - track the user's movements
+            //
+            locaxis = axis                                                  // save local copy
+            step = extent / 10
+            swipos = baserect[topleft]
+            while !final {                                                  // loop to track touch/pointer drag
+                touch = pending.wait()
+                pending.reset()
+                if !touch
+                    final = baserect[topleft]
+                else if touch == true {                                     // drag complete
+                    if pending.end[pageXY] > pending.start[pageXY] + minMove && frameDiv1
+                        final = baserect[topleft] + extent
+                    else if pending.end[pageXY] < pending.start[pageXY] - minMove && frameDiv2
+                        final = baserect[topleft] - extent
+                    else {
+                        final = baserect[topleft]
+                        touch = false
+                    }
+                }
+                else {
+                    xyoff = touch[pageXY] - pending.start[pageXY]
+                    if xyoff > minMove && !frameDiv1
+                        xyoff = minMove                                      // limit swipe-right for invalid left
+                    else if xyoff < -minMove && !frameDiv2
+                        xyoff = -minMove                                     // limit swipe-left for invalid right
+                    swipos = baserect[topleft] + xyoff
+                    setpos(swipos)
+                }
+            }
+            //
+            // Phase 2 - the user has completed their input
+            //
+            if pending.end[pageXY] < pending.start[pageXY]
+                callback("early", locaxis, 1, touch)
+            else
+                callback("early", locaxis, 0, touch)
+            //
+            // Phase 3 - animate chosen frame div into position
+            //
+            delta = 10
+            factor = 8
+            while swipos != final {                                         // loop to animate position
+                sleep(delta)
+                if pending.stop
+                    break                                                   // new touch/click interrupted animation
+                diff = final - swipos
+                if diff < 0
+                    diff = -diff
+                if diff < factor
+                    diff = 1
+                else if diff < step+step+step+step
+                    diff = diff / factor
+                else
+                    diff = step
+                if swipos < final  {
+                    swipos += diff
+                    if swipos > final
+                        swipos = final
+                } else {
+                    swipos -= diff
+                    if swipos < final
+                        swipos = final
+                }
+                setpos(swipos)
+            }
+            //                                                              // (thank you iOS Safari for your bugs)
+            // Phase 4 - notify of transition and restore UI
+            //
+            if touch {
+                if final < baserect[topleft] {
+                    swapDivs(1)
+                    callback("end", locaxis, 1)
+                }
+                else {
+                    swapDivs(0)
+                    callback("end", locaxis, 0)
+                }
+            } else
+                resetpos()
+            if options.baseSwipingClass
+                setElementClass(swiper.baseDiv, options.baseSwipingClass, false)
+            callback()
+            swiper.swipeDiv1.innerHTML = ""
+            swiper.swipeDiv2.innerHTML = ""
+            setElementClass(swiper.swipeDiv1, "d-none", true)
+            setElementClass(swiper.swipeDiv2, "d-none", true)
+         nextrun.signal()                                                   // wake up any waiter
+        }).run()
+    }
+    
+    //
+    // start / move / stop
+    //
+    //     Make sense of events that come in wrong.
+    //
+    function start(event, local touchrect) {
+        if dragging
+            return
+        window.scroll(0,0)                                                  // reset because Android gets confused
+        swiper.disable = callback("acting", event)                          // tuple of disabled axes
+        touchrect = touchDiv.getBoundingClientRect()
+        if event.pageY < touchrect.top + (touchrect.bottom-touchrect.top) / 10
+            return
+        if event.pageY > touchrect.bottom - (touchrect.bottom-touchrect.top) / 10
+            return
+        dragging = 1
+        pending.stop = true
+        pending.signal(true)
+        pending = new(nonce)
+        pending.start = event
+        axis = false                                                        // no direction yet
+    }
+    function move(event, local dx, dy) {
+        if !dragging
+            return
+        if !axis {
+            dx = Math.abs(event.pageX - pending.start.pageX)
+            dy = Math.abs(event.pageY - pending.start.pageY)
+            if numeric(dx, dy) {
+                if dx < 10 && dy < 10
+                    return                                                  // too small a movement yet
+                if dx > dy {
+                    if swiper.disable.0
+                        return (stop(event))
+                    setaxis(`xaxis)                                         // horizontal
+                }
+                else if dy > dx {
+                    if swiper.disable.1
+                        return (stop(event))
+                    setaxis(`yaxis)                                         // vertical
+                }
+                else
+                    return                                                  // diagonal or zero
+                toucher(pending)
+            }
+            if !dragging
+                return
+            dragging = 2                                                    // now moving
+        }
+        pending.signal(event)
+    }
+    function stop(event, local moved, delta) {
+        if !dragging
+            return
+        moved = dragging == 2
+        dragging = false
+        callback("acted", event, moved)
+        if moved {
+            delta = pending.start[pageXY] - event[pageXY]
+            if delta >= minMove
+                callback("commit", axis, 1)
+            else if delta <= -minMove
+                callback("commit", axis, 0)
+        }
+        pending.end = event
+        pending.signal(event != false)
+    }
+    
+    // canSwipe
+    //
+    // True iff we can swipe the specified element.
+    //
+    function canSwipe(elem, local seltext) {
+        seltext = window.getSelection().toString()
+        !elem["draggable"]
+            && (!seltext || seltext.length == 0)
+            && !elem.classList.contains("SwipeOff")
+            && (js.w.document.activeElement === js.w.document.body
+            || elem.classList.contains("Swipeable"))
+    }
+
+    //
+    // touch events
+    //
+    
+    touchDiv.addEventListener("touchstart", function(event, local touch) {
+        callback("click", event)
+        if event.changedTouches.length != 1
+            return
+        touch = event.changedTouches.0
+        if canSwipe(touch.target) {
+            callback("touching", touch.target)
+            start(touch)
+        }
+    })
+
+    touchDiv.addEventListener("touchend", function(event) {
+        stop(event.changedTouches.0)
+    })
+
+    touchDiv.addEventListener("touchcancel", function(event) {
+        stop()
+    })
+
+    touchDiv.addEventListener("touchmove", function(event) {
+        if event.changedTouches.length != 1
+            return
+//
+// The folowing suppresses the hold-for-text-menu feature of iOS Safari, but it also
+// prevents the "click" events from being generated that are necessary for allowing
+// videos to play automatically with sound after a swipe. So don't use them.
+//
+//        if dragging == 2
+//            event.preventDefault()
+//
+        move(event.changedTouches.0)
+    })
+    
+    // mouse support
+    
+    touchDiv.addEventListener("pointerdown", function(event) {
+        if canSwipe(event.target) && !(event.ctrlKey || event.shiftKey || event.optionKey)
+            start(event)
+    })
+    
+    touchDiv.addEventListener("pointerup", function(event) {
+        if dragging == 2
+            touchDiv.releasePointerCapture(event.pointerId)
+        stop(event)
+    })
+    
+    touchDiv.addEventListener("pointermove", function(event) {
+        if dragging == 2
+            touchDiv.setPointerCapture(event.pointerId)
+        move(event)
+    })
+    
+    // other events
+    
+    touchDiv.addEventListener("click", function(event) {
+        callback("click", event)
+    })
+
+    //
+    // API
+    //
+    // animate
+    //
+    // Animate a transition on the specified axis and direction. This returns true if successful or
+    // false if we failed due to a swiping operation currently in progress with the user. This will
+    // return during the animation occurring, which will stop early if the user starts a new swipe.
+    
+    swiper.animate = closure animate(axis, direction, local touchrect, estart, estop) {
+        if dragging
+            return (false)
+        touchrect = touchDiv.getBoundingClientRect()
+        estart = {
+            pageX: touchrect.left + (touchrect.right - touchrect.left) / 2
+            pageY: touchrect.top + (touchrect.bottom - touchrect.top) / 2
+            animate: true
+        }
+        estop = new(estart)
+        if axis == `xaxis {
+            if direction == 0
+                estop.pageX += minMove+1
+            else
+                estop.pageX -= minMove+1
+        } else {
+            if direction == 0
+                estop.pageY += minMove+1
+            else
+                estop.pageY -= minMove+1
+        }
+        future(function() { start(estart), move(estop), stop(estop) }, 5)
+        return (true)
+    }
+    
+    //
+    // baseDiv
+    //
+    // Access swiper.baseDiv to get current base div that holds the active UI.
+    //
+    
+    // finis
+
+    swiper
+};
+
+
+/*
+ * swipeInit
+ *
+ *     Load the Swiper module.
+ *
+ */
+
+function swipeInit(local manifest) {
+    manifest = `(Swiper, swipeInit)
+
+    Naan.module.build(module.id, "swipe", function(modobj, compobj) {
+        compobj.manifest = manifest
+    })
+} ();

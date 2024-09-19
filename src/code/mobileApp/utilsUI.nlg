@@ -1,0 +1,967 @@
+/*
+ * utilsUI.nlg
+ * MobileApp PWA
+ *
+ * column positioning:                          //                          //                      !
+ *
+ * Copyright (c) 2021-2024 by Richard C. Zulch
+ *
+ */
+
+
+/*
+ * setElementClass
+ *
+ *     Add or remove a class from a DOM element.
+ *
+ */
+
+function setElementClass(elem, className, present) {
+    if present {
+        if !elem.classList.contains(className)
+            elem.classList.add(className)
+    } else
+        elem.classList.remove(className)
+};
+
+
+/*
+ * setElementLink
+ *
+ *     Set a unique id link from element elid to element elfor.
+ *
+ */
+
+function setElementLink(elid, elfor, local uniqueID) {
+    uniqueID = UUID()
+    elid.setAttribute("id", uniqueID)
+    elfor.setAttribute("for", uniqueID)
+};
+
+
+/*
+ * escapeHTML
+ *
+ *     Escape some HTML into plain text.
+ *
+ */
+
+function escapeHTML(html) {
+    document.createElement("div")
+        .appendChild(document.createTextNode(html))
+        .parentNode
+        .innerHTML
+};
+
+
+/*
+ * PtInRect
+ *
+ *     True iff the x,y coordinates are within the DOMRect.
+ *
+ */
+
+function PtInRect(x, y, rect) {
+    x > rect.left && x < rect.right && y > rect.top && y < rect.bottom
+};
+
+
+/*
+ * PinRect
+ *
+ *     Pin rect within bound, returning the new rect.
+ *
+ */
+
+function PinRect(rect, bound, local left, top) {
+    left = rect.left
+    top = rect.top
+    if rect.right > bound.right
+        left = bound.right - rect.width
+    if left < bound.left
+        left = bound.left
+    if rect.bottom > bound.bottom
+        top = bound.bottom - rect.height
+    if top < bound.top
+        top = bound.top
+    xnew(window.DOMRect, left, top, rect.width, rect.height)
+};
+
+
+/*
+ * MoveRect
+ *
+ *     Return a new rect with the specified location.
+ *
+ */
+
+function MoveRect(rect, x, y) {
+    xnew(window.DOMRect, x, y, rect.width, rect.height)
+};
+
+
+/*
+ * InsetRect
+ *
+ *     Return a new rect with positive inset (or negative outset.)
+ *
+ */
+
+function InsetRect(rect, inset, local left, top) {
+    left = rect.left + inset
+    top = rect.top + inset
+    xnew(window.DOMRect, left, top, rect.width - 2*inset, rect.height - 2*inset)
+};
+
+
+/*
+ * RectToDict
+ *
+ *     Return a dictionary from a DOMRect.
+ *
+ */
+
+function RectToDict(rect) {
+    {
+        x: rect.left
+        y: rect.top
+        width: rect.width
+        height: rect.height
+    }
+};
+
+
+/*
+ * MoveElement
+ *
+ *     Move an element to the specified client coordinates.
+ *
+ */
+
+function MoveElement(element, x, y, local offset) {
+    offset = element.offsetParent.getBoundingClientRect()
+    if !offset
+        offset = { left: 0, top: 0 }
+    element.style.left = strcat(x - offset.left, "px")
+    element.style.top = strcat(y - offset.top, "px")
+};
+
+
+/*
+ * SizeElement
+ *
+ *     Size an element as specified.
+ *
+ */
+
+function SizeElement(element, width, height) {
+    element.style.width = strcat(width, "px")
+    element.style.height = strcat(height, "px")
+};
+
+
+/*
+ * PinElement
+ *
+ *     Pin an element to the specified bounding rectangle in client coordinates.
+ *
+ */
+
+function PinElement(element, bounds, local rect) {
+    rect = element.getBoundingClientRect()
+    rect = PinRect(rect, bounds)
+    MoveElement(element, rect.left, rect.top)
+};
+
+
+/*
+ * DragDropper
+ *
+ *     Turn the element into a drag-and-drop target with the callback.
+ *
+ */
+
+closure DragDropper(element, callback) {
+    global()
+    setElementClass(element, "drag_can", true)
+    element.addEventListener("dragenter", function(event) {
+        setElementClass(element, "drag_active", true)
+        event.preventDefault()
+    })
+    element.addEventListener("dragover", function(event) {
+        setElementClass(element, "drag_active", true)
+        event.preventDefault()
+    })
+    element.addEventListener("dragleave", function(event) {
+        setElementClass(element, "drag_active", false)
+        event.preventDefault()
+    })
+    element.addEventListener("dragend", function(event) {
+        setElementClass(element, "drag_active", false)
+        event.preventDefault()
+    })
+    element.addEventListener("drop", function(event, local files) {
+        setElementClass(element, "drag_active", false)
+        event.preventDefault()
+        files = event.dataTransfer.files
+        callback(files, element)
+    })
+    true
+};
+
+
+/* 
+ * DragMover
+ *
+ * Configure the element to be movable by dragging with a callback. The callback protocol is:
+ *      <callback>("down", event)   -- pointer down, true to proceed
+ *      <callback>("move", event)   -- pointer moved, return bounds-rect to limit movement
+ *      <callback>("up", event)     -- pointer up
+ * where op is "down", "move", and "up", and the dict is the state for the drag operation. It should
+ * return true to proceed or false to ignore the event.
+ *
+ * DragMover returns a dictionary with the following methods:
+ *  {
+ *      remove()        -- remove from the element
+ *  }
+ *
+ * A typical style for the draggable item is:
+ *
+ *  .DragMover {
+ *      pointer-events: auto;
+ *      z-index: 10;
+ *      position: absolute;
+ *      font-size: 22px;
+ *      font-weight: 400;
+ *      line-height: 1.0;
+ *      padding-top: 8px;
+ *      color: white;
+ *      border-style: solid;
+ *      border-color: white;
+ *      border-width: 1px;
+ *  }
+ *
+ */
+
+closure DragMover(element, callback, local evlis) {
+    global()
+    evlis = { }
+    //
+    // block touch event defaults for iOS you bastards
+    //
+    evlis.xPreventDefault = xnew(function(event) { event.preventDefault() })
+    element.addEventListener("touchstart", evlis.xPreventDefault)
+    element.addEventListener("touchmove", evlis.xPreventDefault)
+    element.addEventListener("touchend", evlis.xPreventDefault)
+    //
+    // start a drag-move
+    //
+    evlis.xPointerDown = xnew(closure(event,
+        local start, offset, dragState, xmove, xup) {
+        start = element.getBoundingClientRect()
+        offset = element.offsetParent.getBoundingClientRect()
+        dragState = {
+            startX: start.left
+            startY: start.top
+            left: start.left - event.pageX
+            top: start.top - event.pageY
+            pointerId: event.pointerId
+        }
+        xmove = xnew(function(event, local moveX, moveY, bounds, outer, rect) {
+            if !dragState
+                return
+            moveX = event.pageX + dragState.left
+            moveY = event.pageY + dragState.top
+            bounds = callback("move", event)
+            dragState.valid = true
+            if bounds {
+                outer = InsetRect(bounds, -100)
+                if PtInRect(event.pageX, event.pageY, outer) {
+                    rect = MoveRect(start, moveX, moveY)
+                    rect = PinRect(rect, bounds)
+                    moveX = rect.left
+                    moveY = rect.top
+                } else {
+                    moveX = dragState.startX
+                    moveY = dragState.startY
+                    dragState.valid = false
+                }
+            }
+            element.style.left = strcat(moveX - offset.left, "px")
+            element.style.top = strcat(moveY - offset.top, "px")
+            event.stopImmediatePropagation()
+            event.preventDefault()
+            true
+        })
+        xup = xnew(function(event){
+            element.removeEventListener("pointermove", xmove)
+            element.removeEventListener("pointerup", xup)
+            element.releasePointerCapture(dragState.pointerId)
+            callback("up", event, dragState.valid)
+            dragState = false
+            true
+        })
+        if !callback("down", event)
+            return (false)
+        element.addEventListener("pointermove", xmove)
+        element.addEventListener("pointerup", xup)
+        element.setPointerCapture(dragState.pointerId)
+        event.stopImmediatePropagation()
+        event.preventDefault()
+    })
+    element.addEventListener("pointerdown", evlis.xPointerDown)
+    //
+    // remove us
+    //
+    function remove() {
+        element.removeEventListener("touchstart", evlis.xPreventDefault)
+        element.removeEventListener("touchmove", evlis.xPreventDefault)
+        element.removeEventListener("touchend", evlis.xPreventDefault)
+        element.removeEventListener("pointerdown", evlis.xPointerDown)
+        evlis = false
+    }
+    //
+    // return
+    //
+    {
+        remove: remove
+    }
+};
+
+
+/*
+ * GenerateProgressBar
+ *
+ *     Generate a Bootstrap-5 progress bar function for the specified element. Call this generator
+ * to get a progresser, and then call the progresser with the level of progress completed, which is
+ * true for unknown progress, 0-100 for percentage, and false when completed.
+ *
+ */
+
+closure GenerateProgressBar(element) {
+    global()
+    element.setAttribute("aria-valuemin", "0%")
+    element.setAttribute("aria-valuemax", "100%")
+    element.style["width"] = "0%"
+    function progresser(completion) {
+        if numeric(completion) {
+            element.style["width"] = "${toint(completion)}%"
+            element.style["visibility"] = "visible"
+            setElementClass(element, "progress-bar-striped", false)
+            setElementClass(element, "progress-bar-animated", false)
+            element.setAttribute("aria-valuenow", completion)
+        }
+        else if completion == true {
+            element.style["width"] = "100%"
+            element.style["visibility"] = "visible"
+            setElementClass(element, "progress-bar-striped", true)
+            setElementClass(element, "progress-bar-animated", true)
+            element.removeAttribute("aria-valuenow")
+        }
+        else {
+            element.style["width"] = "100%"
+            element.style["visibility"] = "hidden"
+            element.setAttribute("aria-valuenow", "100%")
+        }
+    }
+};
+
+
+/*
+ * GenerateStyleRamper
+ *
+ *     Generate a style ramper function for the specified HTML element and attribute. Call this
+ * generator to get a ramper, and then call the ramper whenever you want to ramp the attribute from
+ * it's current value, with an optional rate that ranges from 0 (slowest) to 100 (fastest).
+ * This implements the soft fade of https://patents.google.com/patent/US7994732B2/en by yours truly.
+ *
+ */
+
+closure GenerateStyleRamper(element, attribute, local rampTarget, rampDelay) {
+    function styleRamper(target, rate) {
+        if !numeric(target)
+            return
+        if !rate || rate < 0 || rate > 100
+            rate = 65
+        rampDelay = (100.0 - rate) + 5
+        if !rampTarget
+            future(function srfp(local current, delta, step) {
+                loop {
+                    current = tofloat(window.getComputedStyle(element)[attribute])
+                    if Number.isNaN(current) {                              // element not visible
+                        element.style[attribute] = rampTarget               // jump to final value for later
+                        rampTarget = false
+                        return
+                    }
+                    delta = rampTarget - current
+                    if delta == 0 || !delta {
+                        rampTarget = false                                  // done or failed
+                        return
+                    }
+                    if Math.abs(delta) < 0.01
+                        step = delta
+                    else
+                        step = delta/5.0
+                    element.style[attribute] = current + step
+                    sleep(rampDelay)
+                }
+            }).run()
+        rampTarget = target
+    }
+};
+
+
+/*
+ * OffcanvasVisifier
+ *
+ *     Generate a "visifier" object for the specified offcanvas element. This configures a JavaScript
+ * control object with these methods:
+ *     show(shown)                              -- true iff we are not already shown
+ *     hide()                                   -- true iff we are not already hiding/hidden
+ * The show function's shown callback is called when the element has been shown. Note that this can
+ * happen before the show call returns.
+ *
+ */
+
+closure OffcanvasVisifier(div local visi, shownXproc, hiddenXproc) {
+    global(window)
+    visi = new(object, this)
+    visi.settings = xnew(window.bootstrap.Offcanvas, div)
+
+    // show
+    //
+    // Show the offcanvas
+    //
+    visi.show = closure show(shown) {
+        if shownXproc || hiddenXproc
+            return (false)
+        shownXproc = xnew(function(event) {
+            div.removeEventListener("shown.bs.offcanvas", shownXproc)
+            shownXproc = false
+            window.scroll(0,0)
+            shown()
+        })
+        div.addEventListener("shown.bs.offcanvas", shownXproc)
+        hiddenXproc = xnew(function(event) {
+            div.removeEventListener("hidden.bs.offcanvas", hiddenXproc)
+            hiddenXproc = false
+        })
+        div.addEventListener("hidden.bs.offcanvas", hiddenXproc)
+        visi.settings.show()
+        true
+    }
+    
+    // hide
+    //
+    // Hide the offcanvas
+    //
+    visi.hide = closure hide() {
+        if hiddenXproc {
+            visi.settings.hide()
+            true
+        }
+    }
+    
+    // finis
+    visi
+};
+
+
+/*
+ * HowDown
+ *
+ * Given text, return HTML arising from any Markdown-style formatting sequences in the text.
+ * Currently supported is [link-text](url) and nothing else.
+ *
+ */
+
+function HowDown(text) {
+    text = escapeHTML(text)
+    text.replaceAll(RegExp("[[]([^\\]]+)]\\s*[(](\\S+)[)]", "g"), function(match, text, link) {
+        '<a href="${link}" target="_blank" class="how_down">${text}</a>'
+    })
+};
+
+
+/*
+ * MoreLessText
+ *
+ * Generate a more/less text control object for the specified elements in a dictionary, which are:
+ *      moreEl, lessEl                          -- buttons to show for more or less text
+ *      textEl                                  -- the text element to restrict as desired
+ *      refEl                                   -- reference element to compare to text length.
+ * If textEl content height is greater than refEl then we limit the lines shown to be within the
+ * height of refEl, and show moreEl and lessEl buttons to allow the user to expose or restore the
+ * line limit as desired. This function initializes moreEl and lessEl when called and returns an
+ * object with the following methods:
+ *     update()                                 -- update the more/less element visibility according
+ *                                                 to current element sizes.
+ * The show function's shown callback is called when the element has been shown.
+ *
+ */
+
+closure MoreLessText(elements local mole) {
+    global(window)
+    mole = new(object, this)
+    elements.moreEl.innerText = T("Read More")                              // invariant initialization
+    elements.lessEl.innerText = T("Read Less")
+    setElementClass(elements.moreEl, "d-none", true)
+    setElementClass(elements.lessEl, "d-none", true)
+    mole.more = false                                                       // default state is limited
+
+    // click handlers
+
+    elements.moreEl.addEventListener("click", function(event) {
+        mole.more = true
+        update()
+    })
+    
+    elements.lessEl.addEventListener("click", function(event) {
+        mole.more = false
+        update()
+    })
+
+    // update
+    //
+    // Set the more/less elements according to geometry. There are three states: more button needed,
+    // less button needed, or neither button needed.
+    //
+    mole.update = function update(local lineheight, linesWant, linesHave, buttonHeight) {
+        elements.textEl.style.removeProperty('-webkit-line-clamp')
+         setElementClass(elements.secondTextEl, "d-none", false)
+        lineheight = Number.parseInt(window.getComputedStyle(elements.textEl).lineHeight, 10)
+        linesWant = Math.floor(elements.textEl.clientHeight/lineheight)
+        if (elements.secondTextEl)
+            linesWant += Math.floor(elements.secondTextEl.clientHeight/lineheight)
+
+        linesHave = Math.floor(elements.refEl.clientHeight/lineheight)
+        buttonHeight = elements.moreEl.clientHeight
+        if buttonHeight < elements.lessEl.clientHeight
+            buttonHeight = elements.lessEl.clientHeight
+        if linesWant > linesHave {                                          // won't fit
+            if mole.more
+                linesHave = false                                           // show all text
+            else
+                linesHave = Math.floor((elements.refEl.clientHeight - buttonHeight)/lineheight)
+        } else
+            linesHave = buttonHeight = false
+        setElementClass(elements.moreEl, "d-none", !buttonHeight || mole.more)
+        setElementClass(elements.lessEl, "d-none", !buttonHeight || !mole.more)
+        if elements.secondTextEl
+             setElementClass(elements.secondTextEl, "d-none", !buttonHeight || !mole.more)
+        if linesHave
+            elements.textEl.style['-webkit-line-clamp'] = linesHave
+        else if elements.secondTextEl
+                setElementClass(elements.secondTextEl, "d-none", false)
+        
+    }
+
+    // finis
+    mole
+};
+
+
+/*
+ * TabbedView
+ *
+ *     Make a TabbedView object. The caller passes a dictionary defining the objects that control
+ * each panel. When a view goes active/inactive then it is called with .navtab(active, ident) before 
+ * it is hidden or after it has become active. Example dictionary:
+ *  {
+ *      videos:     <object>                    // HTML needs TV_videosRadio and TV_videosView
+ *      courses:    <object>                    // HTML needs TV_coursesRadio and TV_coursesView
+ *      mystuff:    <object>                    // HTML needs TV_mystuffRadio and TV_mystuffView
+ *  }
+ *
+ */
+
+closure TabbedView(div, objs, local navbar, ident, tab, radioID) {
+    global(document, window)
+    navbar = new(object, this)
+    navbar.items = []
+    navbar.radioName = UUID()
+
+    for ident in objs {
+        tab = {
+            ident:      ident,
+            label:      div.getElementsByClassName("TV_".concat(ident, "Radio")).0,
+            view:       div.getElementsByClassName("TV_".concat(ident, "View")).0,
+        }
+        tab.butobj = window.bootstrap.Button.getOrCreateInstance(tab.label)
+        if !tab.butobj
+            debuglog("TabbedView: no label for TV_${ident}Radio")
+        tab.radio = tab.label.previousElementSibling
+        if !tab.radio
+            debuglog("TabbedView: input-radio must precede TV_${ident}Radio")
+        radioID = UUID()
+        tab.radio.setAttribute("name", navbar.radioName)
+        tab.radio.setAttribute("id", radioID)
+        tab.label.setAttribute("for", radioID)
+        tab.label.textContent = objs[ident].labelText
+        closure(ident, label) {                                             // create a listener for each click
+            label.addEventListener("click", function() {
+                navbar.selectView(ident)
+            })
+        } (tab.ident, tab.label)
+        navbar.items.push(tab)
+    }
+
+    // identItem(ident) - get item for ident, else false
+    navbar.identItem = function identItem(ident, local item) {
+        for item in navbar.items
+            if item.ident == ident
+                return (item)
+        return (false)
+    }
+
+    // disabled(ident) - true iff ident is disabled
+    navbar.disabled = function disabled(ident, local item) {
+        item = navbar.identItem(ident)
+        if not item
+            return (true)
+        return (item.label.classList.contains("disabled"))
+    }
+
+    // selectView(ident) - select only the specified view
+    navbar.selectView = function selectView(ident, local item) {
+        if ident && disabled(ident)
+            return
+        navbar.active = false
+        for item in navbar.items
+            if item.ident == ident {
+                if !item.radio.checked {
+                    item.butobj.toggle()
+                    item.radio.checked = true
+                }
+                setElementClass(item.label, "active", true)
+                item.view.style.visibility = ""
+                navbar.active = ident
+            } else {
+                item.radio.checked = false
+                setElementClass(item.label, "active", false)
+                objs[item.ident].navtab(false, item.ident)
+                item.view.style.visibility = "hidden"
+            }
+        if navbar.active
+            objs[navbar.active].navtab(true, navbar.active)
+    }
+    
+    // navbar.objForIdent(ident)    - return object for that view
+    navbar.objForIdent = function objForIdent(ident) { objs[ident] }
+
+    // nabar.activeObj()            - return object for active view
+    navbar.activeObj = function activeObj() { objs[navbar.active] }
+
+    navbar
+};
+
+
+/*
+ * AddFloatingLabel
+ *
+ *     Add flating label when placeholder is hidden and show maxlength value
+ *
+ */
+
+function AddFloatingLabel(elem, placeholder, local label, uniqueID, div, span1, span2) {
+    global(document)
+    if elem.id && elem.id != "" 
+        return
+
+    uniqueID = UUID()
+    elem.placeholder = placeholder
+    elem.setAttribute("id", uniqueID)
+    label = document.createElement("label")
+    label.innerHTML = elem.placeholder
+    label.setAttribute("for", uniqueID)
+    elem.after(label)
+    setElementClass(label, "floating_label", true)
+    setElementClass(elem.parentElement, "form-floating", true)
+    if elem.getAttribute("rows")
+        elem.style.height = "inherit"
+    
+    if elem.getAttribute("maxlength") {
+        div = document.createElement("div")
+        setElementClass(div, "ah_count", true)
+        setElementClass(div, "d-none", true)
+        label.after(div)
+        span1 = document.createElement("span")
+        span1.innerHTML = elem.value.length
+        span1.id = uniqueID.concat("span")
+        div.appendChild(span1)
+        span2 = document.createElement("span")
+        span2.innerHTML = "/".concat(elem.getAttribute("maxlength"))
+        div.appendChild(span2)
+        elem.addEventListener("input", function(event, local id, span) {
+            id = event.target.id
+            span = document.getElementById(id.concat("span"))
+            span.innerHTML = tostring(event.target.value.length)
+        })
+        elem.addEventListener("focus", function(event, local id, span) {
+            id = event.target.id
+            span = document.getElementById(id.concat("span"))
+            span.innerHTML = tostring(event.target.value.length)
+            setElementClass(span.parentElement, "d-none", false)
+        })
+        elem.addEventListener("blur", function(event, local id, span) {
+            id = event.target.id
+            span = document.getElementById(id.concat("span"))
+            setElementClass(span.parentElement, "d-none", true)
+        })
+    }
+};
+
+
+/*
+ * Tableize
+ *
+ *     Convert an array of text elements to an HTML table. The source array should have an element
+ * for each row and column, and either text for the cell contents, or an array of strings for 
+ * multiple lines in the cell. Options allow for the text to be HTML-escaped:
+ *
+ *  {
+ *      allow_html: <default false>                                         // with this, you have to clean your own text
+ *      col_style:  [<col0_string>...]
+ *      row_style:  <string>
+ *      subs: [`(<find>,<replace>), ...]                                    // or you can swap in HTML with this
+ *  }
+ *
+ */
+
+function Tableize(data, options,
+    local nlregx, indent, output, row, rowout, col, coldex, elem, colout) {
+    nlregx = RegExp("\n|\r", "g")
+
+    // escaper
+    // Escape HTML so that it's displayed and not interpreted. This also removes newlines and
+    // returns because they can mess up the table formatting.
+    //
+    function escaper(txt) {
+        txt = txt.replace(nlregx, "")
+        if !options.allow_html
+            txt = escapeHTML(txt)
+        if options.subs
+            for item in options.subs
+                txt = txt.replace(item.0, item.1)
+        txt
+    }
+    
+    // indented
+    // Return the indented form of a string
+    //
+    function indented(txt, indent) {
+        space.repeat(indent*4).concat(txt)
+    }
+
+    output = "<table class='table'>\n"
+        "    <tbody>\n"
+    indent = 1
+    for row in data {
+        if options.row_style
+            elem = "<tr style='".concat(options.row_style, "'>\n")
+        else
+            elem = "<tr>\n"
+        rowout = indented(elem, ++indent)
+        for `(col, coldex) in row {
+            if options.col_style && options.col_style[coldex]
+                elem = "<td style='".concat(options.col_style[coldex], "'>")
+            else
+                elem = "<td>"
+            colout = indented(elem, ++indent)
+            if array(col)
+                for line in col
+                    colout = colout.concat(escaper(line), "<br/>")
+            else
+                colout = colout.concat(escaper(col))
+            rowout = rowout.concat(colout, "</td>\n")
+            --indent
+        }
+        output = output.concat(rowout, indented("</tr>\n", indent--))
+    }
+    output.concat("    </tbody>\n"
+        "</table>\n")
+};
+
+
+/*
+ * ReferenceTable
+ *
+ * Generate html that displays a table of data, with link references that hook to a handler. The div
+ * argument is updated with the new html. The caller provides an array of "rows", consisting of two 
+ * element tuples of (<label>, [<lines>]), where:
+ *     label        -- string identifying the "row"
+ *     lines        -- array of "lines" described next
+ * Each line is either a literal string or a tuple of (<class>, <recordID>, <string>) to embed a
+ * link, where:
+ *      kind        -- identifies the internal type of link, e.g. "buyer"
+ *      recordID    -- userID, payID, etc.,
+ *      display     -- must contain <a>name</a> where <a> will be replaced with the link
+ * The click parameter is a callback that handles user clicks on the links. It is called with the
+ * following arguments:
+ *      click(kind, recordID, event)
+ * using the kind and recordID from the original line tuple.
+ *
+ * The return value is just the specified div. This is based upon Tableize. 
+ *
+ */
+
+function ReferenceTable(div, rows, options, click, local infoTable, linkRefs,
+    row, data, line, kind, recordID, display, aclass, html, item, link) {
+    if options
+        options = merge({
+            col_style: [
+                "width:150px; padding:0.1em 0.5em;",
+                "padding:0.1em 0.5em;"
+            ]
+        }, options)
+    infoTable = []
+    linkRefs = []
+    for row in rows {
+        data = []
+        if !array(row.1)
+            row = [row.0, [row.1]]                                      // always iterate
+        for line in row.1 {                                             // add the lines
+            if string(line)
+                data.push(line)
+            else {
+                kind = line.0
+                recordID = line.1
+                display = line.2
+                aclass = UUID()
+                html = display.replace("<a>", "<a class='${aclass}'>")
+                if html == display
+                    debuglog("ReferenceTable: not able to add ${aclass}")
+                else {
+                    data.push(aclass)
+                    linkRefs.push(list(aclass, html, kind, recordID, line.3))
+                }
+            }
+        }
+        infoTable.push([row.0, data])                                   // label and row data
+    }
+    tabstr = Tableize(infoTable, {
+        col_style: options.col_style
+        subs: linkRefs
+    })
+    div.innerHTML = tabstr
+    for item in linkRefs {
+        aclass = item.0
+        link = div.getElementsByClassName(aclass).0
+        if link
+            closure (click, kind, targetID, arg) {
+                link.addEventListener("click", function(event) {
+                    click(kind, targetID, event, arg)
+                })
+            } (click, item.2, item.3, item.4)
+        else
+            debuglog("ReferenceTable: cannot addEventListener to ${aclass}")
+    }
+    div
+};
+
+
+/*
+ * GenerateCountdownTimer
+ *
+ *     Create a countdown timer in the specified div and return its control object.
+ *
+ */
+
+closure GenerateCountdownTimer(div, local cdt) {
+    cdt = new(object, this)
+    div.innerHTML = '<div class="cdt_base">'
+        '<svg class="cdt_svg" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">'
+            '<g class="cdt_circle">'
+                '<circle class="cdt_path_elapsed" cx="50" cy="50" r="45"></circle>'
+                '<path '
+                    'class="cdt_path_remaining green"'
+                    'pathlength="1"'
+                    'stroke-dasharray="1"'
+                    'stroke-dashoffset="0.5"'
+                    'd="'
+                        'M 50, 50'
+                        'm -45, 0'
+                        'a 45,45 0 1,0 90,0'
+                        'a 45,45 0 1,0 -90,0"'
+                '></path>'
+            '</g>'
+        '</svg>'
+        '<span class="cdt_label"></span>'
+    '</div>'
+    cdt.elems = {
+        cdt_base: div.getElementsByClassName("cdt_base").0
+        cdt_svg: div.getElementsByClassName("cdt_svg").0
+        cdt_circle: div.getElementsByClassName("cdt_svg").0
+        cdt_path_remaining: div.getElementsByClassName("cdt_path_remaining").0
+        cdt_label: div.getElementsByClassName("cdt_label").0
+    }
+
+    // setpos
+    //
+    // Set the timer position in the range 0..1.
+    //
+    function setpos(pos) {
+        if number(pos)
+            pos = tostring(pos)
+        cdt.elems.cdt_path_remaining.setAttribute("stroke-dashoffset", pos)
+    }
+
+    // stop
+    //
+    // Stop the countdown timer.
+    //
+    cdt.stop = closure stop() {
+        if cdt.running
+            assign(cdt.running, false)
+        cdt.running = false
+    }
+
+    // start
+    //
+    // Wait the specified seconds while counting down, then return. Any existing run is stopped. The
+    // return value is true if this completed or false if stopped early.
+    //
+    cdt.start = closure start(secs, local running, elapsed, delay, total, pending) {
+        stop()
+        cdt.running = `running
+        running = true
+        elapsed = 0
+        delay = 20
+        total = secs * 1000
+        pending = new(nonce)
+        future(function() {
+            while running {
+                setpos(tofloat(elapsed) / total)
+                if elapsed >= total
+                    break
+                elapsed += delay
+                sleep(delay)
+            }
+            pending.signal(running)
+            running = false
+        }, 0)
+        pending.wait()
+    }
+
+    // finis
+    cdt
+};
+
+
+/*
+ * utilsUiInit
+ *
+ *     Initialize the utilsUI component.
+ *
+ */
+
+function utilsUiInit(local manifest) {
+    manifest = `(setElementClass, setElementLink, escapeHTML, PtInRect, PinRect, MoveRect, InsetRect,
+        RectToDict, MoveElement, SizeElement, PinElement, DragDropper, DragMover, 
+        GenerateProgressBar, GenerateStyleRamper, OffcanvasVisifier, HowDown, MoreLessText,
+        TabbedView, AddFloatingLabel, Tableize, ReferenceTable, GenerateCountdownTimer, utilsUiInit)
+
+    Naan.module.build(module.id, "utilsUI", function(modobj, compobj) {
+        compobj.manifest = manifest
+    })
+} ();

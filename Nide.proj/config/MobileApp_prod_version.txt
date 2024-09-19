@@ -1,0 +1,8 @@
+#
+# MobileApp_prod_version.txt
+#
+
+$Version$
+1.0.0+$BuildNumber$
+$Licensee$
+MIT licensed

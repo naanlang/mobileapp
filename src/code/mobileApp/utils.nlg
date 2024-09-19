@@ -1,0 +1,415 @@
+/*
+ * utils.nlg
+ * MobileApp PWA
+ *
+ * column positioning:                          //                          //                      !
+ *
+ * Copyright (c) 2021-2024 by Richard C. Zulch
+ *
+ */
+
+
+/*
+ * dcaller
+ *
+ *     Report the caller of the specified function for debugging. By default this ignores lambda
+ * functions, but you can pass true for argument two to report them.
+ *
+ */
+
+function dcaller(proc, lambdaOK, local x, found) {
+    global(dcaller)
+    for x in stacktrace()
+        if procedure(list(x.0)) {
+            if !lambdaOK && lambda(x.1)
+                continue
+            if found && !proc
+                return (x.1)                                                // found procedure name symbol
+            else if x.1 == dcaller
+                found = true
+            else if proc && x.1 == proc
+                proc = false }
+    false
+};
+
+
+/*
+ * dateToLocal
+ *
+ * Return a Date as a local string with TZ offset
+ *
+ */
+
+function dateToLocal(date) {
+    global()
+    if string(date)
+        date = toint(date)
+    if !date || date == 0
+        return ("never")
+    Date(date).toLocaleString('sv',{timeZoneName:'short'}).replace(' GMT',' Z')
+};
+
+
+/*
+ * formatPct
+ *
+ * Format a number in the range 0-1 as a percentage with a decimal only if required.
+ *
+ */
+
+function formatPct(value) {
+    Number((value*100).toFixed(1)).toLocaleString(mobileLanguage)
+};
+
+
+/*
+ * parseCurrency
+ *
+ * Parse a currency-amount string into a dictionary. The currency can be a 3-letter prefix or can be
+ * specified as an argument. The return is:
+ *
+ *  {
+ *      currency:       <string>                // RUB USD EUR or ""
+ *      symbol:         <string>                // ₽   $   €
+ *      amount:         <float>                 // numeric amount
+ *      decimal:        <string>                // 0.xx format
+ *      formatted:      <string>                // 0.xx format with currency symbol
+ *      coded:          <string>                // <currency><decimal>, e.g. RUB10
+ *  }
+ *
+ */
+
+function parseCurrency(curamt, currency, local output, parts) {
+    global()
+    output = { }
+    if string(curamt)
+        curamt = curamt.replaceAll(RegExp("\\s", "g"), "")                      // remove whitespace
+    parts = RegExp("((?:RUB)|(?:EUR)|(?:USD))\\s*([0-9]+(?:[,.][0-9]{1,2})?)").exec(curamt)
+    if parts {
+        output.amount = parts.2
+        currency = parts.1
+    } else if (parts = RegExp("[0-9]+[,.]?[0-9]{0,2}").exec(curamt))
+        output.amount = parts.0
+    else
+        return (false)                                                      // can't find anything like a value
+    output.amount = tofloat(output.amount.replace(",","."))
+    if !currency
+        currency = ""
+    output.currency = currency
+    output.decimal = Number(output.amount.toFixed(2)).toLocaleString(mobileLanguage)
+    output.coded = currency.concat(output.decimal)
+    if currency == "RUB" {
+        output.symbol = "₽"
+        output.formatted = "${output.decimal} ₽"
+    }
+    else if currency == "EUR"{
+        output.symbol = "€"
+        output.formatted = "€ ${output.decimal}"
+    }
+    else if currency == "USD" {
+        output.symbol = "$"
+        output.formatted = "$ ${output.decimal}"
+    }
+    else {
+        output.symbol = ""
+        output.formatted = output.decimal
+    }
+    output
+};
+
+
+/*
+ * FileReader
+ *
+ *     Read file(s) from the browser's host machine. This is passed a File object and returns a
+ * nearly-standard (error, blob, size) tuple. If progress is specified then this function is called
+ * with a percentage of completion from zero to 100 if available, or true otherwise. The progress
+ * callback is called with "false" when completed, with or without success
+ *
+ */
+
+closure FileReader(file, progress, local pending, freader, result) {
+    global(window)
+    pending = new(nonce)
+    freader = xnew(window.FileReader)
+    freader.addEventListener("load", function(event, local blob) {
+        blob = xnew(window.Blob, [freader.result], {
+            type: file.type
+        })
+        pending.signal(list(false, blob, event.total))
+    })
+    freader.addEventListener("error", function(error) {
+        pending.signal(list(error))
+    })
+    freader.AddEventListener("progress", function(event) {
+        debuglog("progress", event.lengthComputable, event.loaded, event.total)
+        if event.lengthComputable && event.total
+            progress(toint((event.loaded * 100) / event.total))
+        else
+            progress(true)
+    })
+    freader.readAsArrayBuffer(file)
+    result = pending.wait()
+    progress(false)
+    result
+};
+
+
+/*
+ * FileUploader
+ *
+ *     Upload a blob using a signedURL.
+ *
+ */
+
+closure FileUploader(signedURL, data, local error, value) {
+    global(window)
+    if !string(signedURL) || !data
+        error = Error("FileUploader: URL and data required")
+    else {
+        `(error, value) = await(window.fetch(signedURL, {
+            method: 'PUT'
+            body: data
+        }))
+        if error
+            error = Error("FileUploader failed:", error)
+    }
+    list(error, value)
+};
+
+
+/*
+ * GenerateAverager
+ *
+ *     Generate a time-based moving average calculator with the specified parameters. The returned
+ * function is called to add a value in the current interval. The list of recent intervalis is
+ * updated and the current average value returned.
+ *
+ */
+
+closure GenerateAverager(nbuckets, intms, local now, start, buckets, accum) {
+    global()
+
+    function removeObsoleteBuckets(local earliest, value) {
+        if buckets.length == 0
+            return
+        earliest = now - nbuckets * intms
+        while start <= earliest {
+            value = buckets.shift()
+            if value
+                accum -= value
+            start += intms
+            if buckets.length == 0 {
+                start = false
+                break
+            }
+        }
+    }
+
+    function add(amount, local bucket) {
+        now = milliseconds()
+        removeObsoleteBuckets()
+        if !start {
+            accum = amount
+            start = now
+            buckets = [amount]
+    } else if amount != 0 {
+            bucket = (now - start) / intms
+            if !buckets[bucket]
+                buckets[bucket] = amount
+            else
+                buckets[bucket] += amount
+            accum += amount
+        }
+        return (accum / tofloat(nbuckets))
+    }
+};
+
+
+/*
+ * ServiceWorker
+ *
+ *     Manage the service worker lifecycle.
+ *
+ */
+
+closure ServiceWorker(pubID, pubVersion, local serv, callback) {
+    global(window)
+    serv = new(object, this)
+    
+    // workerMsg
+    //
+    // A message has come in from the service worker.
+    //
+    closure workerMsg(msg) {
+        msg = msg.data
+        if msg.id == "upgrade" {
+            if serv.version != msg.version
+                debuglog("ServiceWorker: upgrading", serv.version, "to", msg.version)
+            else
+                debuglog("ServiceWorker: claimed by", msg.version)
+        }
+        else if msg.id == "text" {
+            serv.version = msg.version
+            debuglog("ServiceWorker: ", msg.text)
+        }
+        else
+            debuglog("ServiceWorker other message:", msg, msg.*, msg.id)
+    }
+
+    // updateComms
+    //
+    // Establish communication with a service worker, returning the message port.
+    //
+    closure updateComms(sworker, proc, local mchan, msgport) {
+        if !sworker
+            return (false)
+        mchan = xnew(window.MessageChannel)
+        msgport = mchan.port2
+        msgport.onmessage = proc
+        sworker.postMessage({
+            hereIsYourPort: mchan.port1
+            hereIsMyID: pubID
+            hereIsMyVersion: pubVersion
+        }, [mchan.port1])
+        msgport
+    }
+    
+    // cbWhenReady
+    //
+    // Invoke the callback when ready to update.
+    //
+    function cbWhenReady() {
+        if serv.readyAvailable && serv.readyUpdated
+            callback("available", serv.version)                             // ready to tell user
+    }
+
+    //
+    // register
+    //
+    // Register our service worker object. Possible events for the callback are:
+    //
+    //      "registered"                        -- registration here is complete
+    //      "unregistered"                      -- previous registration removed
+    //      "available"                         -- an update is available to user
+    //
+    serv.register = closure register(cb, local err, reg) {
+        if serv.reg
+            unregister()
+        callback = cb
+        if !window.navigator.serviceWorker
+            return (list(Error("service workers not supported")))
+        `(err, reg) = await(window.navigator.serviceWorker.register("ah_sworker.js"))
+        if err
+            return (list(Error("service worker register failed", err)))
+        serv.reg = reg
+        serv.activePort = updateComms(serv.reg.active, workerMsg.proc)
+        reg.addEventListener("updatefound", function() {
+            debuglog("ServiceWorker: updatefound")
+            serv.readyAvailable = true
+            cbWhenReady()
+        })
+        reg.addEventListener("statechange", function(e) {
+            debuglog("ServiceWorker: statechange ${e.target.state}")
+            if e.target.state == "activated"
+            {
+                serv.readyAvailable = true
+                cbWhenReady()
+            }
+        })
+        callback("registered")
+        cbWhenReady()
+        list(false, { ok: true })
+    }
+
+    // update
+    //
+    // Go get the latest version of the service worker and update if changed.
+    //
+    serv.update = closure update(local err, reg) {
+        `(err, reg) = await(serv.reg.update())
+        if err
+            return (list(Error("service worker update failed", err)))
+        list(false, reg)
+    }
+
+    // reload
+    //
+    // If a sevice worker is waiting, then terminate the old one and activate the new one -- which
+    // will cause the page and all tabs on this page to reload. This returns false if there is no
+    // new service worker waiting, or true if we will soon be reloaded by the controllerchange
+    // event below.
+    //
+    serv.reload = closure reload(local waitingPort, activePort) {
+        waitingPort = updateComms(serv.reg.waiting, function() {})
+        if !waitingPort
+            return (false)
+        activePort = updateComms(serv.reg.active, function() {})
+        activePort.postMessage({
+            id: "terminate"
+        })
+        waitingPort.postMessage({
+            id: "skipWaiting"
+        })
+        return (true)
+    }
+
+    // controllerchange event
+    //
+    // This event arrives after the service worker calls skipWaiting.
+    //
+    window.navigator.serviceWorker.addEventListener("controllerchange", function() {
+        debuglog("ServiceWorker: controllerchange")
+        serv.readyUpdated = true
+        cbWhenReady()
+    })
+
+    // abortURL
+    //
+    // Send an abortURL message to the active service worker
+    //
+    serv.abortURL = closure abortURL(url) {
+        serv.activePort.postMessage({
+            id: "abortURL"
+            url: url
+        })
+    }
+
+    // unregister
+    //
+    //     Unregister our service worker.
+    //
+    serv.unregister = closure unregister(local err, success) {
+        if !serv.reg
+            return (list(Error("already not registered")))
+        `(err, success) = await(serv.reg.unregister())
+        serv.reg = false                                                    // good or bad, don't try again
+        callback("unregistered")
+        callback = false
+        if err
+            return (list(Error("unregister failed", err)))
+        else
+            return (list(false, { unregistered: true }))
+    }
+
+    // finis
+    serv
+};
+
+
+/*
+ * utilsInit
+ *
+ *     Initialize the utils component.
+ *
+ */
+
+function utilsInit(local manifest) {
+    manifest = `(dcaller, dateToLocal, formatPct, parseCurrency, FileReader, FileUploader,
+        GenerateAverager, ServiceWorker, csvPrint, csvQuoteGenerator, utilsInit)
+
+    Naan.module.build(module.id, "utils", function(modobj, compobj) {
+        compobj.manifest = manifest
+        HttpsUpload = require("frameworks/browser/https_request.nlg").HttpsUpload
+    })
+} ();

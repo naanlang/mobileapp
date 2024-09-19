@@ -1,0 +1,8 @@
+#
+# MobileApp_server_version.txt
+#
+
+$Version$
+server-1.0.0+$BuildNumber$
+$Licensee$
+MIT licensed

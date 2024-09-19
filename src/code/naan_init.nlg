@@ -1,0 +1,143 @@
+/*
+ * naan_init.nlg
+ * MobileApp PWA
+ *
+ * Loaded automatically to initialize the main browser thread.
+ *
+ * column positioning:                          //                          //                      !
+ *
+ * Copyright (c) 2021-2024 by Richard C. Zulch
+ *
+ */
+
+loglevel(3);;
+chns("Start");;
+
+/*
+ * firstLoadInit
+ *
+ *     Perform first-time loading operations, which are not done on reload.
+ *
+ */
+
+exceptionSave;
+
+function firstLoadInit(local dodebug, savens) {
+    //
+    // installDebugging
+    //
+    function installDebugging() {
+        Naan.runtimelib.curdriver().setOptions({prompt:true})
+        require("frameworks/common/repltools.nlg").ImportReplTools()        // import our REPL tools
+        require("frameworks/running/debugnub.nlg").DebugNub()               // debugger nub for debugging IDE itself
+        require("frameworks/running/taskexec.nlg").TaskExecutor()           // used by debugger nub
+    }
+
+    debuglog("firstLoadInit", "$NaanIDE_Configuration$")
+    exceptionSave = exception.proc
+    sudo(putproc(`exception, function(arg) {                                // log exceptions
+        if exception != `(`internal, "end-of-file")
+            debuglog("### exception:", arg)
+        exceptionSave(arg)
+    }))
+    dodebug = member("$NaanIDE_Configuration$", `("dev", "test"))
+    if "$NaanIDE_Configuration$" == "dev" {
+        defineExt("nlg", true)                                              // dev's code extension
+        installDebugging()
+        App.mobileApp = require("code/mobileApp/mobileApp.nlg")
+    } else {
+        JsLoadScript("code/mobile.js")                                      // JsLoadScript defined below
+        savens = nsactive()
+        require("common").init()
+        if dodebug
+            require("running").init()
+        require("browser").init()
+        require("mobileApp").init()
+        nsactive(savens)
+        Naan.runtimelib.driver.setOptions({prompt:js.w.opener!=false})
+        if js.w.opener {
+            if dodebug
+                installDebugging()
+            else
+                Naan.runtimelib.curdriver().setOptions({prompt:true})
+        }
+        App.mobileApp = require("mobileApp")
+    }
+};;
+
+ 
+/* --------------------------------------------------------------------------------------
+ * Copied from frameworks/common/common.nlg to load the script containing the frameworks.
+ * --------------------------------------------------------------------------------------
+ *
+ * JsLoadScriptg
+ *
+ *     Load the specified script, or return its main entry point if already loaded. This blocks the
+ * caller until the script load completes. The return value is false if an error occurred.
+ *
+ */
+
+jsScripts = { };                                                            // script values become false on reload
+ 
+closure JsLoadScript(libpath, globalID, local savens, fpath, hostpath, pending, scriptTag) {
+    global(jsScripts, js)
+    if jsScripts[libpath]
+        return                                                              // already loaded
+    savens = nsactive()
+    if libpath.startsWith("/")
+        fpath = libpath
+    else
+        fpath = "/".concat(libpath)
+    hostpath = js.w.location.origin.concat(js.r("path").dirname(js.w.location.pathname))
+    if js.s.importScripts && tostring(js.s.importScripts) == "[Function importScripts]" {
+        fpath = hostpath.concat(fpath)
+        try {
+            js.s.importScripts(fpath)                                       // load in worker context
+            jsScripts[libpath] = js.s[globalID]
+        } catch {
+            debuglog("JsLoadScript:", libpath, "failed", exception)
+            js.s.console.log("JsLoadScript:", libpath, "failed", exception) // ensure visibility in JS console
+        }
+    } else if js.w {                                                        // load in browser context
+        pending = new(nonce)
+        scriptTag = js.w.document.createElement("script")
+        scriptTag.src = hostpath.concat(fpath, requireQuery())
+        scriptTag.onload = function (event) {
+            jsScripts[libpath] = js.w[globalID]
+            pending.signal(js.w[globalID])
+            true
+        }
+        scriptTag.onerror = function (event) {
+            debuglog("JsLoadScript:", libpath, "not found")
+            pending.signal(false)
+            true
+        }
+        js.w.document.body.appendChild(scriptTag)
+        pending.wait()
+    } else if js.g
+        jsScripts[libpath] = js.r(libpath)                                  // load in NodeJS context
+    nsactive(savens)
+    jsScripts[libpath]
+};;
+
+
+/*
+ * loadMobile
+ *
+ *     Load MobileApp into the browser, whether for the first time or after reload.
+ *
+ */
+
+firstload = true
+
+function loadMobile() {
+    js.w.document.title = "MobileApp $Version$"
+    if firstload
+        firstLoadInit()
+    else
+        debuglog("mobileApp reloaded")
+    firstload = false
+    module.postload = loadMobile                                            // called again after reload
+    debuglog("referrer: ${js.w.document.referrer}")
+    App.mobile = App.mobileApp.MobileApp("$Version$")
+} ();;

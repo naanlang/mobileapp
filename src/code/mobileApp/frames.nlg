@@ -1,0 +1,728 @@
+/*
+ * frames.nlg
+ * MobileApp PWA
+ *
+ * column positioning:                          //                          //                      !
+ *
+ * Copyright (c) 2021-2024 by Richard C. Zulch
+ *
+ */
+
+/*
+*usersLastOpenPage
+*
+*store information about last page that visit user to restore after refresh
+*/
+
+usersLastOpenPage = null
+
+/*
+ * FrameBase
+ *
+ *     A base class for frame instances with the common code. All frame objects with the same page
+ * type share a non-visible prototype div that they clone to create their own non-DOM instance. When
+ * the page is needed in the DOM then the setParent(pardiv) method adds it to the specified parent
+ * DOM. Likewise the clearParent() method removes it from its parent.
+ *
+ */
+
+closure FrameBase(frames, divID, initParams, local frame) {
+    global(document, usersLastOpenPage)
+    frame = new(object, this)
+    frame.divID = divID
+    frame.divPrototype = document.getElementById(divID)
+    frame.div = frame.divPrototype.cloneNode(true)
+    frame.div.removeAttribute("id")                                         // ensure no duplicate IDs
+    usersLastOpenPage = {
+        divID: divID
+        initParams: initParams
+    }
+    
+    // debugName
+    //
+    // Return the debugging/logging name for the frame.
+    //
+    frame.debugName = function debugName() {
+        frame.divID
+    }
+    
+    // visible
+    //
+    // Return true iff the frame is visible, i.e. not in the cache.
+    //
+    frame.visible = function visible() {
+        !frame.div.classList.contains("d-none")
+    }
+    
+    // firstClass
+    //
+    // Return the first instances of the specified CSS class within the frame, or false.
+    //
+    frame.firstClass = function firstClass(className local elems) {
+        elems = frame.div.getElementsByClassName(className)
+        if elems.length == 0
+            debuglog("FrameBase.firstClass found no elements of class", className, "in frame", divID)
+        else if elems.length > 1
+            debuglog("FrameBase.firstClass found", elems.length, "elements of class", className, "in frame", divID)
+        elems.0
+    }
+    
+    // clone
+    //
+    // Clone the frame, returning the new object with its own div and no parent.
+    //
+    frame.clone = function clone() {
+        debuglog("FrameBase.clone is abstract")
+    }
+
+    // sameFrame
+    //
+    // True iff the other frame has the same content as us.
+    //
+    frame.sameFrame = function sameFrame(other) {
+        divID == other.divID && frame._refcon == other._refcon
+    }
+
+    // options
+    //
+    // Return UI options required for this frame:
+    //
+    frame.options = function options() {
+        { }
+    }
+
+    // activate
+    //
+    // Activate this frame in the container.
+    //
+    frame.activate = function activate() {
+        frames.frameSwitch(frame)
+    }
+      
+    // activated
+    //
+    // Our frame was activated.
+    //
+    frame.activated = function activated() {
+        frames.cache.markUsed(frame)
+    }
+
+    // dontComeBack
+    //
+    // Mark this frame, one time only, to not be in the "go back" stack when it is replaced.
+    //
+    frame.dontComeBack = function dontComeBack() {
+        frame.noBack = true
+        frame
+    }
+    
+    // swipeStart
+    //
+    // A swipe has started from our frame.
+    //
+    frame.swipeStart = function swipeStart(axis) {
+        if axis == `xaxis
+            frames.frameNav(true)
+    }
+
+    // swipeDisable
+    //
+    // Disable swipe axis.
+    //
+    frame.swipeDisable = function swipeDisable() {
+        `(false, true)                                                      // disable Y axis
+    }
+
+    // setParent
+    //
+    // This adds us to the specified parent, or to the frames container if false. This moves the page
+    // from its previous parent if it has one.
+    //
+    frame.setParent = function setParent(pardiv) {
+        if pardiv === frame.div.parentElement
+            return
+        if !pardiv
+            pardiv = frames.swiper.baseDiv
+        pardiv.appendChild(frame.div)
+    }
+    
+    // registerForNotify
+    //
+    // Register a procedure for app notifications, and remove it with frame.
+    //
+    frame.registerForNotify = function registerForNotify(msgid, proc) {
+        if frame.frameNotifies
+            frame.frameNotifies.push(proc)
+        else
+            frame.frameNotifies = [proc]
+        frames.mobile.registerForNotify(msgid, proc)
+    }
+
+    // clearParent
+    //
+    // Clear our parent div, if we have one, removing us from the DOM.
+    //
+    frame.clearParent = function clearParent() {
+        if frame.div.parentElement {
+            setElementClass(frame.div, "d-none", true)
+            frame.div.parentElement.removeChild(frame.div)
+        }
+    }
+    
+    // reclaim
+    //
+    // LRU removal being performed. Default is just to dispose the frame.
+    //
+    frame.reclaim = function reclaim() {
+        debuglog("frame.reclaim:", frame.debugName())
+        frame.dispose()
+    }
+
+    // dispose
+    //
+    // Dispose of the frame.
+    //
+    frame.dispose = function dispose() {
+        frame.cleanup()
+        frames.mobile.unregisterNotify(frame.frameNotifies)
+        clearParent()
+        frames.frameRemove(frame)
+        frame.div = false
+    }
+
+    // finis
+
+    frame
+};
+
+
+/*
+ * FramesCache
+ *
+ *     Manage a cache of frames to minimize the need to recreate them while not keeping too many
+ * around and exhausting resources.
+ *
+ */
+
+closure FramesCache(mobile, local cachef, frames) {
+    global()
+    cachef = new(object, this)
+    frames = mobile.frames
+    
+    // init
+    //
+    // Ensure we have a cache.
+    //
+    function init() {
+        if cachef.cache.frames
+            return
+        cachef.cache = new(nonce)
+        cachef.cache.frames = []
+    }
+    
+    // lookup
+    //
+    // Return a frame of the specified divID and _refcon, or false if we don't have it.
+    //
+    cachef.lookup = function lookup(divID, _refcon, local trav) {
+        for trav in init()
+            if trav.divID == divID && trav._refcon == _refcon && trav.frame.div
+                return (trav.frame)
+        false
+    }
+    
+    // store
+    //
+    // Store a frame of the specified divID and _refcon.
+    //
+    cachef.store = function store(divID, _refcon, frame, local cframes, trav) {
+        frame._refcon = _refcon
+        cframes = init()
+        for trav in cframes
+            if trav.divID == divID && trav._refcon == _refcon {
+                trav.frame = frame
+                return
+            }
+        cframes.push({
+            divID: divID
+            _refcon: _refcon
+            frame: frame
+        })
+    }
+    
+    // touchPlayAll
+    //
+    // Touch all of our frames looking for video players.
+    //
+    cachef.touchPlayAll = function touchPlayAll(local trav) {
+        for trav in init()
+            trav.frame.touchPlay()
+    }
+    
+    // markUsed
+    //
+    // Mark the frame as used for LRU reclamation. Most recently used are at the array end.
+    //
+    cachef.markUsed = function markUsed(frame, local cframes, tdex, trav, removed) {
+        cframes = init()
+        tdex = 0
+        for trav in cframes {
+            if trav.frame === frame {
+                removed = cframes.splice(tdex, 1)
+                cframes.push(removed.0)
+                break
+            }
+            ++tdex
+        }
+    }
+    
+    // reclaimLRU
+    //
+    // Reclaim the LRU frames for the specified divid, leaving keep of them in the cache, calling
+    // reclaim and dispose on the ones being removed. Least recently used are at the array front.
+    //
+    cachef.reclaimLRU = function reclaimLRU(divID, keep, 
+        local cframes, tdex, remove, trav, reserved) {
+        cframes = init()
+        tdex = 0
+        remove = []
+        for trav in cframes {
+            if trav.divID == divID
+                remove.push(trav)
+            ++tdex
+        }
+        if remove.length <= keep
+            return
+        remove.length -= keep
+        reserved = frames.reservedFrames()
+        if reserved
+            remove = remove.filter(function(item){
+                reserved.indexOf(item.frame) < 0
+            })
+        cachef.cache.cframes = cframes.filter(function(item) {
+            remove.indexOf(item) < 0
+        })
+        for trav in remove
+            trav.frame.reclaim()
+    }
+    
+    // frameRemove
+    //
+    // Remove all references to a frame that was disposed.
+    //
+    cachef.frameRemove = function frameRemove(frame) {
+        cachef.cache.frames = cachef.cache.frames.filter(function(ent) {
+            ent.frame !== frame
+        })
+    }
+
+    // finis
+    
+    cachef
+};
+
+
+/*
+ * FramesHistory
+ *
+ *     A history tracker for frames that is integrated with the cache and frames container. History
+ * allows for horizontal swiping, along with browser history integration. The general structure is
+ * has two stacks, navList with the frames we can go back to and navFwd with the frames we can go
+ * forward to. The current active frame is not in either list.
+ *
+ */
+
+closure FramesHistory(mobile, local histf, frames) {
+    global()
+    histf = new(object, this)
+    frames = mobile.frames
+    histf.navList = []                                                      // frames we can go back to
+    histf.navFwd = []                                                       // frames we can go forward to
+
+    // nextBack
+    //
+    // Return the frame we would go back to, or false.
+    //
+    function nextBack() {
+        histf.navList.slice(-1).0
+    }
+
+    // nextFwd
+    //
+    // Return the frame we would go forward to, or false.
+    //
+    function nextFwd() {
+        histf.navFwd.slice(-1).0
+    }
+
+    // nextNav
+    //
+    // Return the backward and forward frames we would navigate to, as a tuple. If defback is true
+    // and there is nothing to go back to, this asks mobileApp to provide a default.
+    //
+    histf.nextNav = function nextNav(current, defback, local prev, next) {
+        prev = nextBack()
+        next = nextFwd()
+        if prev === current
+            prev = false
+        if next === current
+            next = false
+        if !prev && defback
+            prev = mobile.goBackFrame(current)                               // default go-back frame
+        if next && next === prev {                                          // one frame can't be on both sides
+            histf.navFwd.pop()                                              // discard next one in future
+            next = nextFwd()
+        }
+        // debuglog("nextNav p/n:", prev.debugName(), next.debugName())
+        histf.prev = prev
+        histf.next = next
+        list(prev, next)
+    }
+
+    // postNav
+    //
+    // Adjust after having swapped frames to one of those provided by nextNav. Here, last is the
+    // old frame we switched from, next is the new frame we are switching to, and didFwd is true
+    // iff we switched in the forward direction.
+    //
+    histf.postNav = function postNav(last, next, didFwd, local top) {
+        if !last || !next || last === next {                                // should never happen
+            // debuglog("FramesHistory.postNav: invalid arguments", last.debugName(), "->", next.debugName())
+            return
+        }
+        if next === histf.prev {
+            debuglog("<= swiped back to", next.debugName())
+            top = nextBack()
+            if didFwd || top && top !== next {
+                // debuglog("FramesHistory.postNav: <invalid", didFwd, last.debugName(), "->", next.debugName(), "|", top.debugName())
+                return
+            }
+            histf.navList.pop()
+            if !last.sameFrame(histf.navFwd.slice(-1).0)
+                histf.navFwd.push(last)
+        } else if next === histf.next {
+            debuglog("=> swiped forward to", next.debugName())
+            top = nextFwd()
+            if !didFwd || top && top !== next {
+                // debuglog("FramesHistory.postNav: >invalid", didFwd, last.debugName(), "->", next.debugName(), "|", top.debugName())
+                return
+            }
+            histf.navFwd.pop()
+            if !last.sameFrame(histf.navList.slice(-1).0)
+                histf.navList.push(last)
+        } else {
+            // debuglog("FramesHistory.postNav: unknown next", last.debugName(), "->", next.debugName())
+            return
+        }
+        histf.prev = histf.next = false
+        // debuglog("    r/f:", histf.navList.length, histf.navFwd.length)
+    }
+    
+    // switchNew
+    //
+    // Note that we have switched to a new frame. Here, last is the old fram we switched from, and
+    // next is the new frame we are switching to.
+    //
+    histf.switchNew = function switchNew(last, next) {
+        if !next || last === next || last && !last.noBack && nextBack() === last {
+            debuglog("FramesHistory.switchNew: invalid arguments", last.debugName(), "->", next.debugName())
+            return
+        }
+        if !last.noBack && last && !last.sameFrame(histf.navList.slice(-1).0)
+            histf.navList.push(last)
+        // debuglog("*new frame*", last.debugName(), "->", next.debugName(), last.noBack, "r/f:", histf.navList.length, histf.navFwd.length)
+        last.noBack = false
+    }
+    
+    // switchBack
+    //
+    // Go back to a previous frame, returning the new current frame. Here last is the current frame
+    // before the switch back. This will create a new default back frame if there isn't one.
+    //
+    histf.switchBack = function switchBack(last, local prev) {
+        if !last {
+            debuglog("FramesHistory.switchBack: invalid arguments", last.debugName())
+            return (false)
+        }
+        `(prev) = nextNav(last, true)
+        if !prev {
+            // debuglog("FramesHistory.switchBack: <invalid", last.debugName(), "->", prev.debugName())
+            return (false)
+        }
+        // debuglog("<= go back", last.debugName(), "->", prev.debugName(), last.noBack)
+        postNav(last, prev)
+        last.noBack = false
+        prev
+    }
+    
+    // frameRemove
+    //
+    // Remove all references in our history to a frame that was disposed.
+    //
+    histf.frameRemove = function frameRemove(frame) {
+        histf.navList = histf.navList.filter(function(fr) {
+            fr !== frame
+        })
+        histf.navFwd = histf.navFwd.filter(function(fr) {
+            fr !== frame
+        })
+    }
+    
+    // historyFrames
+    //
+    // Return an array of frames in the history.
+    //
+    histf.historyFrames = function historyFrames() {
+        [].concat(histf.navList, histf.navFwd)
+    }
+
+    // finis
+    
+    histf
+};
+
+
+/*
+ * FramesContainer
+ *
+ *     Here a Page is a page-type that is instantiated as one or more frames that can be identical or
+ * different examples of that page. Each frame corresponds to a div that may be in the DOM or not.
+ *     A FramesContainer instance holds all the various frames that may exist, and all frames inherit
+ * from FrameBase. This Frames architecture is designed to hold multiple instances of the same page
+ * for convenience in supporting swipe-anywhere navigation, and for cacheing elements that are time-
+ * consuming to recreate.
+ *     When a swipe begins, frames are created or cloned and placed in div containers on the approp-
+ * riate sides of the baseDiv container. As move events come in the three active frames scroll along
+ * the selected axis, which requires potentially multiple frames of the same page-type but different
+ * data.
+ *     Each page-type has a separate component and closure to manage all frames of that type, and is
+ * responsible for creating and deleting instances.
+ *
+ */
+
+closure FramesContainer(mobile, local fracon) {
+    global(document)
+    fracon = new(object, this)
+    fracon.mobile = mobile
+    fracon.cache = FramesCache(mobile)
+    fracon.history = FramesHistory(mobile)
+    fracon.run_swipe_pointer = document.getElementById("run_swipe_pointer")
+    fracon.curFrame = false
+    
+    // frameChange
+    //
+    // Change frames from current to the one specified.
+    //
+    function frameChange(frame) {
+        if fracon.curFrame
+            setElementClass(fracon.curFrame.div, "d-none", true)
+        frame.setParent(fracon.swiper.baseDiv)                              // add to DOM
+        setElementClass(frame.div, "d-none", false)
+        fracon.curFrame.deactivated()
+        fracon.curFrame = frame
+        frame.activated()
+    }
+
+    // frameSwitch
+    //
+    // Show the specified page as our visible screen, adding it to the DOM if needed.
+    //
+    fracon.frameSwitch = function frameSwitch(frame) {
+        if fracon.curFrame === frame
+            return (frame)
+        if fracon.preFrame || fracon.postFrame {
+            debuglog("frame.activate ignored during swipe")
+            return (fracon.curFrame)
+        }
+        fracon.history.switchNew(fracon.curFrame, frame)
+        frameChange(frame)
+        frame
+    }
+        
+    // frameSwapped
+    //
+    // Adjust for already-swapped frames after a swipe.
+    //
+    function frameSwapped(frame, axis, direction) {
+        if fracon.curFrame === frame
+            return (frame)
+        if axis == `xaxis
+            fracon.history.postNav(fracon.curFrame, frame, direction == 1)
+        fracon.curFrame.deactivated()
+        fracon.curFrame = frame
+        frame.activated()
+        frame
+    }
+    
+    // reservedFrames
+    //
+    // Report our reserved frames, the current one and the history.
+    //
+    fracon.reservedFrames = function reservedFrames() {
+        fracon.history.historyFrames().concat(fracon.curFrame)
+    }
+    
+    // frameRemove
+    //
+    // Remove all references to a frame that was disposed.
+    //
+    fracon.frameRemove = function frameRemove(frame) {
+        fracon.history.frameRemove(frame)
+        fracon.cache.frameRemove(frame)
+    }
+
+    // goBack
+    //
+    // Go back to previous frame.
+    //
+    fracon.goBack = function goBack(local prev) {
+        prev = fracon.history.switchBack(fracon.curFrame)
+        if prev {
+            frameChange(prev)
+            prev
+        }
+    }
+
+    // activeFrame
+    //
+    // Return the active frame.
+    //
+    fracon.activeFrame = function activeFrame() {
+        fracon.curFrame
+    }
+    
+    // frameNav
+    //
+    // Return the backward and forward frames we would navigate to as a tuple.
+    //
+    fracon.frameNav = function frameNav(defback, local prev, next) {
+        `(prev, next) = fracon.history.nextNav(fracon.curFrame, defback)
+        prev.swipeIn(fracon.curFrame)
+        next.swipeIn(fracon.curFrame)
+        list(prev, next)
+    }
+
+    // Swiper
+    //
+    // Configure our container for swiping to switch frames.
+    //
+    fracon.swiper = Swiper(fracon.run_swipe_pointer, {
+        baseSwipingClass: "crp_swipe"
+    }, function(operation, axis, direction, touch, local preFrame, postFrame, div, extend) {
+        if operation == "touching" {
+            if fracon.curFrame.playing() {
+                axis.preventDefault()                                       // cancel iOS Safari default long-press
+                axis.click()                                                // generate an internal webapp click
+            }
+        }
+        else if operation == "acting" {
+            if !axis.animate {
+                fracon.actingEvent = axis                                   // save event for later
+                future(function(local event) {
+                    if fracon.actingEvent {
+                        event = fracon.actingEvent
+                        fracon.actingEvent = false
+                        fracon.curFrame.swipeHold(event)                    // long-press pause
+                    }
+                }, 60)                                                      // time derived from testing with Igor and Tanya
+            }
+            fracon.curFrame.swipeDisable()
+        }
+        else if operation == "acted" {
+            fracon.actingEvent = false
+        }
+        else if operation == "start" {
+            fracon.actingEvent = false
+            `(preFrame, postFrame, extend) = fracon.curFrame.swipeStart(axis)
+            fracon.preFrame = preFrame
+            fracon.postFrame = postFrame
+            fracon.extend = extend
+            return (list(preFrame.div, postFrame.div))
+        }
+        else if operation == "visible" {
+            fracon.preFrame.swipeVisible(axis)
+            fracon.postFrame.swipeVisible(axis)
+        }
+        else if operation == "early" {
+            if direction == 0 {
+                if fracon.preFrame
+                    fracon.preFrame.early()
+                else
+                    fracon.extend.early(axis, direction)
+            } else if direction == 1 {
+                if fracon.postFrame
+                    fracon.postFrame.early()
+                else
+                    fracon.extend.early(axis, direction)
+            }
+        }
+        else if operation == "end" {
+            if direction == 0 {
+                fracon.postFrame.clearParent()
+                if fracon.preFrame
+                    frameSwapped(fracon.preFrame, axis, 0)
+            } else if direction == 1 {
+                fracon.preFrame.clearParent()
+                if fracon.postFrame
+                    frameSwapped(fracon.postFrame, axis, 1)
+            }
+            fracon.preFrame = fracon.postFrame = false
+            fracon.curFrame.swipeEnd(axis, direction)
+        }
+        else if operation == "click"
+            fracon.cache.touchPlayAll(axis)
+        else if operation == "commit" {
+            if direction == 0
+                fracon.preFrame.swipeCommit(axis, direction)
+            else
+                fracon.postFrame.swipeCommit(axis, direction)
+        }
+        else if !operation {
+            fracon.preFrame.clearParent()
+            fracon.postFrame.clearParent()
+            fracon.preFrame = fracon.postFrame = false
+            fracon.curFrame.swipeCleanup()
+        }
+    })
+
+    // keyDown
+    //
+    // Process keystrokes for desktop browsers.
+    //
+    document.addEventListener("keydown", function(event, local axis, direction) {
+        if event.key == " "
+            fracon.curFrame.swipeHold(event)
+        else {
+            `(axis, direction) = {
+                "ArrowRight":       `(xaxis, 1)
+                "ArrowLeft":        `(xaxis, 0)
+                "ArrowUp":          `(yaxis, 0)
+                "ArrowDown":        `(yaxis, 1)
+            }[event.key]
+            if axis == `xaxis || axis == `yaxis {
+                fracon.cache.touchPlayAll()
+                fracon.swiper.animate(axis, direction)
+            }
+        }
+    })
+
+    // finis
+    
+    fracon
+};
+
+
+/*
+ * framesInit
+ *
+ *     Load the Frames module.
+ *
+ */
+
+function framesInit(local manifest) {
+    manifest = `(FrameBase, FramesCache, FramesHistory, FramesContainer, usersLastOpenPage, framesInit)
+
+    Naan.module.build(module.id, "frames", function(modobj, compobj) {
+        compobj.manifest = manifest
+    })
+} ();

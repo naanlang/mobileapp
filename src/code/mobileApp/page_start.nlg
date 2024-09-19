@@ -1,0 +1,287 @@
+/*
+ * page_start.nlg
+ * MobileApp PWA
+ *
+ * column positioning:                          //                          //                      !
+ *
+ * Copyright (c) 2021-2024 by Richard C. Zulch
+ *
+ */
+
+
+/*
+ * pageStartFrame
+ *
+ * Create a start frame for the specified page controller.
+ *
+ */
+
+closure pageStartFrame(pagecon, coord, local mobile, frame) {
+    global(document, window)
+    mobile = pagecon.frames.mobile
+    frame = FrameBase(pagecon.frames, pagecon.divID)
+    frame.coord = coord
+    frame.crp_frame = frame.firstClass("crp_frame")
+    frame.crp_content = frame.firstClass("crp_content")
+    
+    // chessmap
+    //
+    // This returns the appropriate SVG path if there is a piece, or false otherwise.
+    //
+    function chessmap(coord, local rank, file, filename) {
+        rank = coord.y + 1
+        file = coord.x + 1
+        filename = 
+            if rank == 2
+                "Chess_plt45.svg"
+            else if rank == 7
+                "Chess_pdt45.svg"
+            else if rank == 1
+                "Chess_${'_rnbqkbnr'[file]}lt45.svg"
+            else if rank == 8
+                "Chess_${'_rnbqkbnr'[file]}dt45.svg"
+        if filename
+            "exlib/chess/".concat(filename)
+    }
+        
+    // chessname
+    //
+    // This returns the name of the chess piece at the specified location, or the empty string.
+    //
+    function chessname(coord, local rank, file, names, name) {
+        rank = coord.y + 1
+        file = coord.x + 1
+        names = ["", "rook", "knight", "bishop", "queen", "king", "bishop", "knight", "rook"]
+        name = if rank == 2
+                "white pawn"
+            else if rank == 7
+                "black pawn"
+            else if rank == 1
+                "white ${names[file]}"
+            else if rank == 8
+                "black ${names[file]}"
+        if name
+            " - ".concat(T(name))
+        else
+            ""
+    }
+
+    // chesscoord
+    //
+    // This returns the algebraic coordinates of the current chessboard location.
+    //
+    function chesscoord(coord) {
+        "abcdefgh"[coord.x].concat(coord.y+1)
+    }
+    
+    // chesscolor
+    //
+    // Return an appropriate CSS color class for the board square at the specified coordinates.
+    //
+    function chesscolor(coord) {
+        if bitxor(bitand(coord.x, 1), bitand(coord.y, 1)) == 1
+            "crp_lightsquare"
+        else
+            "crp_darksquare"
+    }
+    
+    // debugName
+    //
+    // Return the debugging/logging name for the frame.
+    //
+    frame.debugName = function debugName() {
+        frame.divID.concat("-", chesscoord(coord))
+    }
+
+    // activated
+    //
+    // We have become the active page.
+    //
+    frame.activated = function activated() {
+    }
+
+    // deactivated
+    //
+    // We will be deactivated.
+    //
+    frame.deactivated = function deactivated() {
+        pagecon.frames.cache.reclaimLRU(pagecon.divID, 5)                   // cache 5 LRU pages
+    }
+
+    // swipeDisable
+    //
+    // Enable all swipe axes.
+    //
+    frame.swipeDisable = function swipeDisable() {
+        false                                                               // false enables both axes
+    }
+
+    // swipeStart
+    //
+    // A swipe has started from our frame. Return a tuple of pages to use for swiping to the next or
+    // previous locations on the specified axis. The tuple is:
+    //
+    //  (previous-page, next-page, extender)
+    //
+    // If extender is specified then it will be contacted if the user attempts to swipe to a page
+    // that does not (yet) exist.
+    //
+    frame.swipeStart = function swipeStart(axis,
+        local prev_x, prev_y, next_x, next_y, prevPage, nextPage) {
+        prev_x = next_x = coord.x
+        prev_y = next_y = coord.y
+        if axis == `xaxis {                                                 // calculate next ID
+            --prev_x
+            ++next_x
+        } else {
+            --prev_y
+            ++next_y
+        }
+        if prev_x >= 0 && prev_y >= 0
+            prevPage = pagecon.makeFrame({ x: prev_x, y: prev_y })
+        if next_x < 8 && next_y < 8
+            nextPage = pagecon.makeFrame({ x: next_x, y: next_y })
+        list(nextPage, prevPage, pagecon)
+    }
+
+    // swipeCommit
+    //
+    // The swipe has been committed, but nothing else done yet. This is still in the user event that
+    // committed the operation.
+    //
+    frame.swipeCommit = function swipeCommit(axis, direction local active) {
+        active = pagecon.frames.activeFrame()
+        debuglog("swipe committed from ${active.debugName()} to ${frame.debugName()}")
+    }
+
+    // swipeEnd
+    //
+    // A swipe has ended from our frame.
+    //
+    frame.swipeEnd = function swipeEnd(axis, direction) {
+    }
+
+    // swipeIn
+    //
+    // The user has started swiping and we may become visible, so reset controls for current state of
+    // play. This is passed the frame from which swiping originated.
+    //
+    frame.swipeIn = function swipeIn(from) {
+    }
+
+    // swipeHold
+    //
+    // The user has done a click on our frame (or spacebar on desktops.)
+    //
+    frame.swipeHold = function swipeHold(event) {
+    }
+
+    // swipeVisible
+    //
+    // A swipe has started and we are now potentially visible.
+    //
+    frame.swipeVisible = function swipeVisible() {
+    }
+
+    // touchPlay
+    //
+    // The tap equivalent of a "click" was made.
+    //
+    frame.touchPlay = function touchPlay() {
+    }
+
+    // orientationChange
+    //
+    // Note that the splash screen has finished.
+    //
+    frame.registerForNotify(`orientationChange, function orientationChange(orient) {
+    })
+
+    // updateUI
+    //
+    // Update the HTML for our page.
+    //
+    function updateUI(local imagePath, image, text) {
+        imagePath = chessmap(coord)
+        if imagePath
+            image = "<image class='crp_piece' draggable='false' src='${imagePath}'></image>"
+        else
+            image = ""
+        text = "<div class='crp_text d-flex justify-content-center'>${chesscoord(coord)}"
+            "${chessname(coord)}</div>"
+        frame.crp_content.innerHTML = image.concat(text)
+        setElementClass(frame.crp_frame, chesscolor(coord), true)
+    }
+    updateUI()
+
+    // finis
+    frame
+};
+
+
+/*
+ * PageStart
+ *
+ *     Start page controller.
+ *
+ */
+
+closure PageStart(frames, local pagecon, mobile) {
+    global(document, window)
+    pagecon = new(object, this)
+    pagecon.frames = frames
+    mobile = frames.mobile
+    pagecon.divID = "startPage"
+
+    // makeFrame
+    //
+    // Return a pageStart frameo.
+    //
+    pagecon.makeFrame = closure makeFrame(coord, local frame) {
+        if !coord
+            coord = { x: 0, y: 0 }
+        frame = frames.cache.lookup(pagecon.divID, coord)
+        if frame
+            frames.cache.markUsed(frame)
+        else {
+            frame = pageStartFrame(pagecon, coord)
+            frames.cache.store(pagecon.divID, coord, frame)
+        }
+        frame
+    }
+    
+    // activate
+    //
+    // Activate the start page.
+    //
+    pagecon.activate = function activate(coord) {
+        makeFrame(coord).activate()
+    }
+
+    // early
+    //
+    // We have been chosen by swipe and are waiting for animation to start.
+    //
+    pagecon.early = function early(axis, direction) {
+    }
+
+    // finis
+    
+    pagecon
+};
+
+
+/*
+ * pageStartInit
+ *
+ *     Load the pageStart module.
+ *
+ */
+
+function pageStartInit(local manifest) {
+    manifest = `(pageStartFrame, PageStart, pageStartInit)
+
+    Naan.module.build(module.id, "page_start", function(modobj, compobj) {
+        compobj.manifest = manifest
+    })
+} ();

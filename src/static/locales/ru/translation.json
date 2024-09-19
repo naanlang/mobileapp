@@ -1,0 +1,22 @@
+{
+    "App Language": "Язык приложения",
+    "black rook": "черная ладья",
+    "black knight": "черный конь",
+    "black bishop": "черный слон",
+    "black queen": "черный ферзь",
+    "black king": "черный король",
+    "black pawn": "черная пешка",
+    "Latest version": "У вас уже последняя версия",
+    "MobileApp version {{version}}": "Версия MobileApp {{version}}",
+    "Settings": "Настройки",
+    "Update": "Обновить",
+    "Update MobileApp": "Обновить MobileApp",
+    "Updated to version {{version}}": "Обновлено до версии {{version}}",
+    "Version {{version}}": "Версия приложения {{version}}",
+    "white rook": "белая ладья",
+    "white knight": "белый конь ",
+    "white bishop": "белый слон",
+    "white queen": "белый ферзь",
+    "white king": "белый король",
+    "white pawn": "белая пешка"
+}

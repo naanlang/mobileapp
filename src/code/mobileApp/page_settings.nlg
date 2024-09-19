@@ -1,0 +1,141 @@
+/*
+ * page_settings.nlg
+ * MobileApp PWA
+ *
+ * column positioning:                          //                          //                      !
+ *
+ * Copyright (c) 2022-2024 by Richard C. Zulch
+ *
+ */
+
+
+/*
+ * pageSettingsFrame
+ *
+ *     An instance of the Settings page.
+ *
+ */
+
+closure pageSettingsFrame(pagecon, local frame, mobile) {
+    global(window, mobileLanguage)
+    frame = FrameBase(pagecon.frames, "settingsPage")
+    mobile = pagecon.frames.mobile
+    frame.setp_back = frame.firstClass("setp_back")
+    frame.setp_back_label = frame.firstClass("setp_back_label")
+    frame.setp_back_label.textContent = T("Back")
+    frame.setp_head = frame.firstClass("setp_head")
+    frame.setp_head.textContent = T("Settings")
+    frame.setp_chooselanguage = frame.firstClass("setp_chooselanguage")
+    frame.setp_chooselanguage.textContent = T("App Language")
+    frame.setp_english = frame.firstClass("setp_english")
+    frame.setp_english.textContent = T("English")
+    frame.setp_russian = frame.firstClass("setp_russian")
+    frame.setp_russian.textContent = T("Russian")
+    if mobileLanguage == "en" 
+        frame.setp_english.disabled = true
+    else
+        frame.setp_russian.disabled = true
+    frame.abp_update = frame.firstClass("abp_update")
+    frame.abp_version = frame.firstClass("abp_version")
+    frame.abp_update.textContent = T("Update").toUpperCase()
+    frame.abp_version.textContent = T("Version {{version}}", { version: App.version })
+
+    // updateUI
+    //
+    // Update our UI.
+    //
+    function updateUI() {
+    }
+
+    //
+    // click handlers
+    //
+    
+    frame.abp_update.addEventListener("click", function() {
+        if mobile.appUpdateCheck()
+            mobile.appUpdateNow()
+        else
+            mobile.alert(T("Latest version"), { timeout: 5000})
+    })
+
+    frame.setp_back.addEventListener("click", function() {
+        pagecon.frames.goBack()
+    })
+
+    frame.setp_english.addEventListener("click", function() {
+        mobile.setLanguage("en")
+    })
+
+    frame.setp_russian.addEventListener("click", function() {
+        mobile.setLanguage("ru")
+    })
+
+    // clone
+    //
+    // Clone this frame and return the new one.
+    //
+    frame.clone = function clone() {
+        pageSettingsFrame(pagecon)
+    }
+    
+    // activated
+    //
+    // Our frame is being activated.
+    //
+    frame.activated = function activated() {
+        updateUI()
+    }
+
+    // deactivated
+    //
+    // Frame is going away, so remove our script.
+    //
+    frame.deactivated = function deactivated() {
+    }
+
+    // finis
+    frame
+};
+
+
+/*
+ * PageSettings
+ *
+ *     Settings page controller.
+ *
+ */
+
+closure PageSettings(frames, local pagecon, mobile) {
+    global()
+    pagecon = new(object, this)
+    pagecon.frames = frames
+    mobile = frames.mobile
+
+    // activate
+    //
+    // Activate the page.
+    //
+    pagecon.activate = function activate() {
+        pageSettingsFrame(pagecon).activate()
+    }
+
+    // finis
+    
+    pagecon
+};
+
+
+/*
+ * pageSettingsInit
+ *
+ *     Load the component.
+ *
+ */
+
+function pageSettingsInit(local manifest) {
+    manifest = `(pageSettingsFrame, PageSettings, pageSettingsInit)
+
+    Naan.module.build(module.id, "page_settings", function(modobj, compobj) {
+        compobj.manifest = manifest
+    })
+} ();

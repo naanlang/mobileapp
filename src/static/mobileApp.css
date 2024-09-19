@@ -1,0 +1,542 @@
+/*
+ * Browser UI Styles
+ * MobileApp
+ *
+ */
+
+html {
+    position: relative;
+    min-height: 100%;
+    height: 100%;
+}
+
+body {
+    overflow: hidden;
+    background-color:#505050;
+    height: -webkit-fill-available;
+    height: -moz-available;
+/*  height: var(--doc-height); -- doesn't work with Android soft keyboard */
+}
+
+.bodyKid {
+    transform: scale(1,1);
+}
+
+#run_swipe_pointer {
+    position: relative;
+    overflow: hidden;
+    background-color: #CE9460;
+}
+
+#mobileGlobalMenu {
+}
+
+.ts_settings {
+    background-color: bisque;
+}
+
+.overflow_y_scroll {
+    overflow-y: scroll;
+}
+
+.floating_label {
+    background: white;
+    max-height: 30px;
+    opacity: 1 !important;
+    padding: 0 0.75rem !important;
+    top: 10px ! important;
+    left: 5px !important;
+    width: 95% !important;
+}
+
+.back_left {
+    padding-left: 6px;
+}
+
+/*
+ * update button
+ *
+ */
+
+.update_webapp {
+    position: absolute;
+    top: 8px;
+    left: 8px;
+    pointer-events: none;
+    z-index: 90;
+}
+
+.update_webapp button {
+    pointer-events: auto;
+}
+
+/*
+ * Utility classes
+ *
+ */
+
+.aspectRatio {
+    width:100%;
+}
+
+.bgimage {
+    background-repeat: no-repeat;
+    background-position: center top;
+    background-size: cover;
+}
+
+.overlapcon {
+    position: relative;
+    overflow: hidden;
+}
+
+.overlapkid {
+    top: 0;
+    left: 0;
+    position: absolute;
+    pointer-events: none;
+}
+
+.alertArea {
+    margin-top:90px;
+    padding-left:30px;
+    padding-right:30px;
+    position: fixed;
+    top: 0;
+    left: 0;
+    z-index: 1000;
+    width:100%;
+    word-wrap: break-word;
+}
+
+.touchy {
+    position: relative;
+}
+
+
+.rounded-pill-left {
+    border-top-left-radius: 50rem;
+    border-bottom-left-radius: 50rem;
+}
+
+.rounded-pill-right {
+    border-top-right-radius: 50rem;
+    border-bottom-right-radius: 50rem;
+}
+
+
+/*
+ * Media-dependent classes
+ *
+ */
+
+/*
+ * smallest
+ */
+
+.svgi {
+    max-width: 48px;
+    max-height: 48px;
+}
+.svgi-b {
+    max-width: 48px;
+    max-height: 48px;
+    background-color: black;
+}
+.svgi-w {
+    max-width: 48px;
+    max-height: 48px;
+    background-color: white;
+}
+.text-large {
+    font-size: 34px;
+    font-weight: 700;
+}
+.text-head {
+    font-size: 22px;
+    font-weight: 600;
+}
+.text-medium {
+    font-size: 17px;
+    font-weight: 500;
+}
+.text-compact {
+    font-size: 16px;
+    font-weight: 400;
+}
+.text-small {
+    font-size: 14px;
+    font-weight: 300;
+}
+.text-mini {
+    font-size: 13px;
+    font-weight: 300;
+}
+.text-small-tight {
+    line-height:14px;
+}
+.text-small-bold {
+    font-size: 14px;
+    font-weight: 600;
+}
+.text-tiny {
+    font-size: 10px;
+    font-weight: 500;
+}
+.crp_size {
+    width: 48px;
+    border-radius: 24px;
+}
+.pp_size {
+    width: 48px;
+    border-radius: 24px;
+}
+.ca_size {
+    height: 28px;
+}
+.cac_size {
+    height: 56px;
+    width: 56px;
+    background-size: 48px;
+}
+.btn-circle {
+    width: 30px;
+    height: 30px;
+    padding: 6px 0;
+    border-radius: 15px;
+    text-align: center;
+    font-size: 12px;
+    line-height: 1.42857;
+}
+
+/*
+ * images
+ *
+ */
+
+.svg_home {
+    width: 31px;
+    height: 35px;
+    -webkit-mask: url('exlib/images/home.svg') no-repeat 50% 55% / 22px 22px;
+}
+.svg_back {
+    width: 24px;
+    height: 36px;
+    -webkit-mask: url('exlib/images/icons8-back.svg') no-repeat 50% 55% / 24px 24px;
+    margin-right: 0.75em;
+}
+.svg_backsm {
+    width: 24px;
+    height: 35px;
+    -webkit-mask: url('exlib/images/icons8-back.svg') no-repeat 50% 55% / 24px 24px;
+}
+.svg_plusbox {
+    width: 36px;
+    height: 36px;
+    -webkit-mask: url('exlib/images/icons8-add-new.svg') no-repeat 50% 55% / 24px 24px;
+}
+.svg_search {
+    width: 36px;
+    height: 36px;
+    -webkit-mask: url('exlib/images/icons8-search.svg') no-repeat 50% 55% / 24px 24px;
+}
+.svg_menu {
+    width: 36px;
+    height: 36px;
+    -webkit-mask: url('exlib/images/icons8-menu.svg') no-repeat 50% 55% / 24px 24px;
+}
+.svg_view {
+    width: 36px;
+    height: 36px;
+    -webkit-mask: url('exlib/images/icons8-eye.svg') no-repeat 50% 55% / 24px 24px;
+}
+.svg_rate {
+    width: 36px;
+    height: 36px;
+    -webkit-mask: url('exlib/images/rating-outline.svg') no-repeat 50% 55% / 24px 24px;
+}
+.svg_share {
+    width: 36px;
+    height: 36px;
+    -webkit-mask: url('exlib/images/icons8-share-rounded.svg') no-repeat 50% 55% / 24px 24px;
+}
+.svg_ellipsis {
+    width: 36px;
+    height: 36px;
+    -webkit-mask: url('exlib/images/icons8-ellipsis.svg') no-repeat 50% 55% / 24px 24px;
+}
+.svg_payment {
+    width: 36px;
+    height: 36px;
+    -webkit-mask: url('exlib/images/ruble.svg') no-repeat 50% 55% / 24px 24px;
+}
+.svg_editprops {
+    width: 36px;
+    height: 36px;
+    -webkit-mask: url('exlib/images/edit-properties.svg') no-repeat 50% 55% / 24px 24px;
+}
+.svg_download {
+    width: 24px;
+    height: 24px;
+    -webkit-mask: url('exlib/images/icons8-download.svg') no-repeat 50% 55% / 24px 24px;
+}
+.img_naanlogo {
+    width: 20vh;
+    height: 10vh;
+    background-image: url('exlib/images/naan-logo-text-small.svg');
+    background-repeat: no-repeat;
+    background-size: contain;
+}
+div.img_naanlogo a {
+    display: block;
+    height: 10vh;
+    width: 20vh;
+}
+
+
+
+/*
+ * colors
+ *
+ */
+
+.green {
+    color: mediumseagreen;
+}
+
+.red {
+    color: red;
+}
+
+.blue {
+    color: cornflowerblue;
+}
+
+.bgc_white {
+    background-color: white;
+}
+
+.bgc_black {
+    background-color: black;
+}
+
+.bgc_light {
+    background-color: #f0f0f0;
+}
+
+/*
+ * orientation
+ *
+ */
+@media screen and (min-aspect-ratio: 1/1) and (min-height: 600px)
+    and (orientation: landscape) {
+    .aspectRatio {
+        aspect-ratio: 1/2;
+        width:unset;
+    }
+}
+
+/*
+ * 750px width
+ *
+ */
+
+@media screen and (min-width: 750px) and (min-height: 1100px)
+    and (orientation: portrait) {
+    .media-scale {
+        transform: scale(2.0);
+    }
+    .svgi {
+        margin: 24px 12px 12px 12px;
+        max-width: 48px;
+        max-height: 48px;
+        transform: scale(2.0);
+    }
+    .svgi-b {
+        margin: 24px 12px 12px 12px;
+        max-width: 48px;
+        max-height: 48px;
+        transform: scale(2.0);
+        background-color: black;
+    }
+    .svgi-w {
+        margin: 24px 12px 12px 12px;
+        max-width: 48px;
+        max-height: 48px;
+        transform: scale(2.0);
+        background-color: white;
+    }
+    .text-large {
+        font-size: 68px;
+        font-weight: 700;
+    }
+    .text-head {
+        font-size: 48px;
+        font-weight: 600;
+    }
+    .text-medium {
+        font-size: 34px;
+        font-weight: 500;
+    }
+    .text-compact {
+        font-size: 32px;
+        font-weight: 450;
+    }
+    .text-small {
+        font-size: 20px;
+        font-weight: 300;
+    }
+    .text-mini {
+        font-size: 18px;
+        font-weight: 300;
+    }
+    .text-small-tight {
+        line-height:20px;
+    }
+    .text-small-bold {
+        font-size: 14px;
+        font-weight: 600;
+    }
+    .crp_size {
+        width: 96px;
+        border-radius: 48px;
+    }
+    .pp_size {
+        width: 96px;
+        border-radius: 48px;
+    }
+    .ca_size {
+        height: 56px;
+    }
+    .cac_size {
+        height: 104px;
+        width: 104px;
+        background-size: 96px;
+    }
+}
+
+
+/*
+ * Pages
+ *
+ */
+
+.pages_container {
+    position: relative;
+    overflow: hidden;
+    background-color:white;
+}
+
+.pages_header {
+    background-color: saddlebrown;
+}
+
+
+/*
+ * pageStartPage
+ *
+ */
+
+.crp_frame {
+    overflow: hidden;
+    pointer-events: auto;
+}
+
+.crp_swipe {
+    top: 0;
+    left: 0;
+    position: absolute;
+    pointer-events: none;
+}
+
+.crp_content {
+    user-select: none;
+}
+
+.crp_text {
+  font-size: 10vw;
+}
+
+.crp_piece {
+    width: 80vw;
+    height: 80vw;
+}
+
+.crp_lightsquare {
+    background-color: burlywood;
+}
+
+.crp_darksquare {
+    background-color: chocolate;
+}
+
+/*
+ * pageSettings
+ *
+ */
+
+.setp_frame {
+}
+
+
+/*
+ * Line Limits
+ *
+ */
+  
+.line_limit1 {
+    -webkit-line-clamp: 1;
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -moz-box-orient: vertical;
+    -ms-box-orient: vertical;
+    overflow: hidden;
+}
+
+.line_limit2 {
+    -webkit-line-clamp: 2;
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -moz-box-orient: vertical;
+    -ms-box-orient: vertical;
+    overflow: hidden;
+}
+ 
+.line_limit3 {
+    -webkit-line-clamp: 3;
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -moz-box-orient: vertical;
+    -ms-box-orient: vertical;
+    overflow: hidden;
+}
+ 
+.line_limit4 {
+    -webkit-line-clamp: 4;
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -moz-box-orient: vertical;
+    -ms-box-orient: vertical;
+    overflow: hidden;
+}
+
+.line_limit {
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -moz-box-orient: vertical;
+    -ms-box-orient: vertical;
+    overflow: hidden;
+}
+
+/*
+ * Quirks for Mobile Safari
+ *
+ */
+
+@media screen and (-webkit-min-device-pixel-ratio:0) { 
+    select:focus,
+    textarea:focus,
+    input[type="text"]:focus {
+        font-size: 24px;
+    }
+}

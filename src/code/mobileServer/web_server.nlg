@@ -1,0 +1,199 @@
+/*
+ * web_server.nlg
+ * MobileApp PWA
+ *
+ * column positioning:                          //                          //                      !
+ *
+ * Copyright (c) 2024 by Richard C. Zulch
+ *
+ */
+
+
+/*
+ * WebServer
+ *
+ * A simple web server for testing on mobile devices.
+ *
+ */
+ 
+closure WebServer(local webs) {
+    global(js, nodeMod)
+    webs = new(object, this)
+    webs.servers = { }
+
+    // ourIP
+    //
+    // Attempt to return the IP address our server is probably bound to.
+    //
+    function ourIP(local ifinfo, netif) {
+        ifinfo = new(js.r("os").networkInterfaces())
+        for netif in ifinfo."en0"
+            if netif.family == "IPv4"
+                return (netif.address)
+        for netif in ifinfo."lo0"
+            if netif.family == "IPv4"
+                return (netif.address)
+        false
+    }
+
+    // open
+    //
+    // Initialize and open the server.
+    //
+    webs.open = closure open(path, portBase, local server, error, port) {
+        if !portBase
+            portBase = 8100
+        if webs.servers[path]
+            close(webs.servers[path])
+        server = nodeMod.APIServer({
+            basePort: portBase
+            name: "MobileAppServer"
+            abspath: path })
+        `(error, port) = server.open()
+        if port {
+            webs.servers[path] = server
+            list(false, {
+                path: path
+                port: port
+                ip: ourIP()
+            })
+        }
+        else
+            list(error)
+    }
+    
+    // close
+    //
+    // Close the server, releasing the port.
+    //
+    webs.close = closure close(path) {
+        if webs.servers[path]
+            webs.servers[path].close()
+        webs.servers[path] = undefined
+    }
+
+    // finis
+    webs
+};;
+
+
+/*
+ * LocateSiteFolders
+ *
+ * Locate the build folder containing the current MobileApp build. We want to do this automatically,
+ * but this runs in a NodeJS worker thread and we need to ask the browser that is connected to NodeJS
+ * on the main thread. And there could be more than one tab connected! Since we know the project name
+ * this can just iterate through the options until it finds a match.
+ *
+ */
+
+function LocateSiteFolders(projname, local error, main, mainContext, output) {
+    // currentProject
+    // This runs in the browser via remote evaluation and returns the current project info.
+    function currentProject() {
+        App.ui.project.current.where
+    }
+
+    // evalNode
+    // This runs in the NodeJS main thread to get project info from matching browser tabs.
+    function evalNode(projname, local error, info) {
+        for client in App.nidecon.clients() {
+            `(error, info) = App.nidecon.remote(client).1.evalq(currentProject(), `(currentProject))
+            if info.name == projname
+                return (info)
+        }
+        false
+    }
+
+    `(error, main) = nodeMod.WorkerToMain()                                 // get main thread proxy
+    if !error
+        `(error, mainContext) = main.context()                              // get main thread remote evaluation context
+    `(error, output) = mainContext.evalq(evalNode(projname), `(evalNode, currentProject, projname))
+    output
+};;
+
+
+/*
+ * dev
+ *
+ *     Serve the dev folder.
+ *
+ */
+
+function dev() {
+    siteOpener(`dev)
+};;
+
+
+/*
+ * prod
+ *
+ *     Serve the prod folder.
+ *
+ */
+
+function prod() {
+    siteOpener(`prod)
+};;
+
+
+/*
+ * run
+ *
+ *     Show the options to the user.
+ *
+ */
+
+closure run(projname, local projinfo) {
+    // siteOpener
+    // Open the website given context information developed here.
+    function opener(stage, local error, details) {
+        path = projinfo.path.concat("Nide.proj/build-${stage}/mobileApp/www/")
+        `(error, details) = webServer.open(path)
+        if error {
+            printline("Cannot open the ${stage} site:", ErrorString(error))
+            list(error)
+        }
+        else {
+            printline("\nThe ${stage} site is available at http://${details.ip}:${details.port}/\n")
+            list(false, { ok: true })                                       // generic success
+        }
+    }
+
+    if !projname
+        projname = "MobileApp"
+    projinfo = LocateSiteFolders(projname)
+    if !projInfo
+        printline("Cannot find project ${projname}\n"
+            "rememdy this and then choose run([project-name]) again")
+    else {
+        siteOpener = opener
+        printline("\nType dev() or prod() to open a server\n")
+    }
+    list(false, { ok: true })                                               // generic success
+};;
+
+
+/*
+ * websInit
+ *
+ *     Initialize our module.
+ *
+ */
+
+function websInit(local manifest) {
+    manifest = `(WebServer, LocateSiteFolders, run, websInit)
+
+    Naan.module.build(module.id, "web_server", function(modobj, compobj) {
+        compobj.manifest = manifest
+        require("naanlib:frameworks/common").LiveImport()
+        require("naanlib:frameworks/common/repltools.nlg").ImportReplTools()    // import our REPL tools
+        require("naanlib:frameworks/running/debugnub.nlg").DebugNub()           // debugger nub for debugging IDE itself
+        require("naanlib:frameworks/running/taskexec.nlg").TaskExecutor()       // used by debugger nub
+        require("naanlib:frameworks/node/worker.nlg")
+        nodeMod = require("naanlib:frameworks/node/apiserver.nlg")
+        webServer = WebServer()
+        printline()
+        run()
+    })
+} ();;

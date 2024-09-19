@@ -1,0 +1,16 @@
+#
+# MobileApp_dev.lic
+#
+# MobileApp license file for dev builds
+#
+
+$NaanIDE_Configuration$
+dev
+$DeployColor$
+CE9460
+$DeployBgColor$
+824920
+$DeployURL$
+https://xxx.com
+$DefLanguage$
+en

@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<svg xmlns:xl="http://www.w3.org/1999/xlink" xmlns:dc="http://purl.org/dc/elements/1.1/" version="1.1" xmlns="http://www.w3.org/2000/svg" viewBox="85 85 344 344" width="344" height="344">
+  <defs/>
+  <g id="delete" stroke="none" stroke-dasharray="none" fill="none" stroke-opacity="1" fill-opacity="1">
+    <title>delete</title>
+    <rect fill="white" x="9223372036854775808e-2147483648" y="9223372036854775808e-2147483648" width="0" height="0"/>
+    <g id="delete_Master_layer">
+      <title>Master layer</title>
+      <g id="Group_52">
+        <g id="Graphic_5">
+          <circle cx="257" cy="257" r="172.000274839126" fill="white"/>
+        </g>
+        <g id="Graphic_4">
+          <circle cx="257" cy="257" r="150.000239685284" fill="#ff0101"/>
+        </g>
+        <g id="Graphic_49">
+          <path d="M 256.46154 243.4525 L 256.46154 243.4525 L 195.2696 182.26055 L 174.62208 202.90807 L 235.81402 264.1 L 174.62208 325.29194 L 195.2696 345.93946 L 256.46154 284.74752 L 317.65348 345.93946 L 338.301 325.29194 L 277.10906 264.1 L 338.301 202.90807 L 317.65348 182.26055 Z" fill="white"/>
+          <path d="M 256.46154 243.4525 L 256.46154 243.4525 L 195.2696 182.26055 L 174.62208 202.90807 L 235.81402 264.1 L 174.62208 325.29194 L 195.2696 345.93946 L 256.46154 284.74752 L 317.65348 345.93946 L 338.301 325.29194 L 277.10906 264.1 L 338.301 202.90807 L 317.65348 182.26055 Z" stroke="black" stroke-linecap="round" stroke-linejoin="round" stroke-width=".1"/>
+        </g>
+      </g>
+    </g>
+  </g>
+</svg>

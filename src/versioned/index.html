@@ -1,0 +1,168 @@
+<!doctype html>
+
+<!--
+ === head ===
+ -->
+      
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>NaaN MobileApp</title>
+    <meta name="description" content="MobileApp - NaaN Example">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="theme-color" content="#$DeployColor$"/>
+    <meta name="theme-color" media="(prefers-color-scheme: light)" content="#$DeployColor$" />
+    <meta name="theme-color" media="(prefers-color-scheme: dark)" content="black" />
+    <link rel="stylesheet" href="exlib/bootstrap/bootstrap.min.css?naanver=$CacheBuster$">
+    <link rel="stylesheet" href="mobileApp.css?naanver=$CacheBuster$">
+    <link rel="icon" href="exlib/images/MobileApp.ico?naanver=$CacheBuster$" sizes="256x256 128x128 32x32 16x16">
+    <link rel="manifest" href="manifest.webmanifest?naanver=$CacheBuster$">
+</head>
+
+<!--
+ === body ===
+ -->
+      
+<body class="d-flex justify-content-center w-100 h-100">
+
+<!--
+ === global menu drawer ===
+ -->
+
+<div  id="mobileGlobalMenu" class="offcanvas offcanvas-bottom" tabindex="-1">
+    <ul class="list-group list-group-flush mt-3 text-medium">
+        <button type="button" class="ts_settings list-group-item list-group-item-action"></button>
+    </ul>
+</div>
+
+<div class="bodyKid aspectRatio d-flex flex-column h-100">
+
+    <!--
+     === global alert area ===
+     -->
+
+    <div class="alertArea">
+        <div id="globalAlertArea">
+            <!-- alerts inserted here -->
+        </div>
+    </div>
+
+    <!--
+     === pages display area ===
+     -->
+
+    <div class="pages_container w-100 h-100 d-flex flex-column">
+        <div class="pages_header text-head flex-shrink-0">
+            <div class="d-flex align-items-top">
+                <div id="headerMenu" class="ms-auto p-2 svg_menu svgi-b me-3">
+                </div>
+            </div>
+        </div>
+        <div id="run_swipe_pointer" class="w-100 flex-grow-1">
+            <div id="pages_base" class="w-100 h-100"></div>
+            <div id="run_swipe1" class="w-100 h-100 crp_swipe"></div>
+            <div id="run_swipe2" class="w-100 h-100 crp_swipe"></div>
+        </div>
+        <div class ="update_webapp w-100 d-flex">
+            <button id="update_webapp_but" type="button" class="btn btn-warning text-medium rounded-pill d-none">
+                <!-- Update MobileApp -->
+            </button>
+        </div>
+    </div>
+
+    <!--
+     === startPage ===
+     -->
+
+    <div id="startPage" class="h-100 overlapcon bgc_white d-none">
+        <div class="w-100 h-100 overlapkid">
+            <div class="crp_frame w-100 h-100 d-flex flex-column Swipeable">
+                <div class="d-flex flex-grow-1 align-items-center justify-content-center Swipeable">
+                    <div class="crp_content">
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!--
+    === settingsPage ===
+    -->
+
+    <div id="settingsPage" class="touchy h-100 d-none"> 
+        <div class="setp_frame d-flex flex-column h-100">
+            <div class="d-flex back_left">
+                <div class="setp_back d-flex me-auto align-items-center">
+                    <div class="svg_back svgi-b">
+                    </div>
+                    <div class="setp_back_label text-medium ms-1 d-none">
+                        <!-- Back -->
+                    </div>
+                </div>
+            </div>
+            <div class="d-flex text-large ms-3">
+                <div class="setp_head"></div>
+            </div>
+            <div class="d-flex flex-row align-items-center ms-3 my-3">
+                <div class="setp_chooselanguage text-head me-3"></div>
+                <div class="flex-grow-1 d-flex flex-column me-2">
+                    <button type="button" class="setp_russian btn btn-warning rounded-pill text-medium"></button>
+                    <button type="button" class="setp_english btn btn-warning rounded-pill text-medium mt-3"></button>
+                </div>
+            </div>
+            <div class="d-flex flex-grow-1 align-self-center">
+                <div class="d-flex align-items-end">
+                    <div class="d-flex flex-column align-items-center">
+                        <button type="button" class="abp_update btn btn-warning rounded-pill text-medium col-8">
+                            <!-- Update -->
+                        </button>
+                        <span class="abp_version text-mini text-black-50">
+                            <!-- Version -->
+                        </span>
+                        <div class="text-mini text-black-50 mt-5">
+                            Chess piece artwork by <a target="_blank"
+                                href="https://commons.wikimedia.org/w/index.php?curid=1499809">Cburnett - CC BY-SA 3.0</a>
+                        </div>
+                        <div class="text-mini d-flex flex-column align-items-center justify-content-end mt-5 mb-2">
+                            powered by
+                            <div class="img_naanlogo">
+                                <a href="https://www.naanlang.org" target="_blank" alt="NaaN"></a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!--
+     === alerts templates ===
+     -->
+      
+    <div id="closableAlertTemplate" class="alert alert-dismissible fade show d-none" role="alert">
+        <div>{alert-text}</div>
+        <button type="button" class="btn-close close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+
+    <!--
+     === scripts & extensions ===
+     -->
+
+    <script src="exlib/popper/popper.min.js?naanver=$CacheBuster$"></script>
+    <script src="exlib/bootstrap/bootstrap.min.js?naanver=$CacheBuster$"></script>
+    <script src="exlib/i18next/i18next.min.js?naanver=$CacheBuster$"></script>
+    <script src="exlib/i18next/i18nextHttpBackend.min.js?naanver=$CacheBuster$"></script>
+    <script src="exlib/bowser/es5.js?naanver=$CacheBuster$"></script>
+
+    <script src="code/naan.min.js?naanver=$CacheBuster$"></script>
+    <script src="code/env_hosted.js?naanver=$CacheBuster$"></script>
+
+    <!-- No Javascript fallback -->
+    <noscript><div style="position:absolute;text-align:center;width:99%;top:50%">MobileApp Requires JavaScript</div></noscript>
+    <!-- END Javascript conditionals -->
+</div>
+
+</body>
+</html>
