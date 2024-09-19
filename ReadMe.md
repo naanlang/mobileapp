@@ -142,4 +142,4 @@ This simple server uses http over an insecure connection to avoid the need for S
 
 ## Next Steps
 
-Please visit the naanlang.org website for more about the NaaN platform. There are also resources available on [GitHub](https://github.com/naanlang/) and NPM for [naan](https://www.npmjs.com/package/@naanlang/naan) and [naanide](https://www.npmjs.com/package/@naanlang/naanide).
+Please visit the [naanlang.org](https://naanlang.org) website for more about the NaaN platform. There are also resources available on [GitHub](https://github.com/naanlang/) and NPM for [naan](https://www.npmjs.com/package/@naanlang/naan) and [naanide](https://www.npmjs.com/package/@naanlang/naanide).
