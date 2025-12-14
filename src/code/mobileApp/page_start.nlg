@@ -23,7 +23,7 @@ closure pageStartFrame(pagecon, coord, local mobile, frame) {
     frame.coord = coord
     frame.crp_frame = frame.firstClass("crp_frame")
     frame.crp_content = frame.firstClass("crp_content")
-    
+
     // chessmap
     //
     // This returns the appropriate SVG path if there is a piece, or false otherwise.
@@ -31,7 +31,7 @@ closure pageStartFrame(pagecon, coord, local mobile, frame) {
     function chessmap(coord, local rank, file, filename) {
         rank = coord.y + 1
         file = coord.x + 1
-        filename = 
+        filename =
             if rank == 2
                 "Chess_plt45.svg"
             else if rank == 7
@@ -43,7 +43,7 @@ closure pageStartFrame(pagecon, coord, local mobile, frame) {
         if filename
             "exlib/chess/".concat(filename)
     }
-        
+
     // chessname
     //
     // This returns the name of the chess piece at the specified location, or the empty string.
@@ -71,20 +71,20 @@ closure pageStartFrame(pagecon, coord, local mobile, frame) {
     // This returns the algebraic coordinates of the current chessboard location.
     //
     function chesscoord(coord) {
-        "abcdefgh"[coord.x].concat(coord.y+1)
+        "abcdefgh"[7-coord.x].concat(coord.y+1)
     }
-    
+
     // chesscolor
     //
     // Return an appropriate CSS color class for the board square at the specified coordinates.
     //
     function chesscolor(coord) {
         if bitxor(bitand(coord.x, 1), bitand(coord.y, 1)) == 1
-            "crp_lightsquare"
-        else
             "crp_darksquare"
+        else
+            "crp_lightsquare"
     }
-    
+
     // debugName
     //
     // Return the debugging/logging name for the frame.
@@ -249,7 +249,7 @@ closure PageStart(frames, local pagecon, mobile) {
         }
         frame
     }
-    
+
     // activate
     //
     // Activate the start page.
@@ -266,7 +266,7 @@ closure PageStart(frames, local pagecon, mobile) {
     }
 
     // finis
-    
+
     pagecon
 };
 
